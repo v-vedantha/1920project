@@ -1,0 +1,199 @@
+=== Generated schedule for mkmulticycle ===
+
+Method schedule
+---------------
+Method: getIReq
+Ready signal: toImem_rv.port1__read[68]
+Conflict-free: getIResp, getDReq, getDResp, getMMIOReq, getMMIOResp
+Conflicts: getIReq
+ 
+Method: getIResp
+Ready signal: ! fromImem_rv.port0__read[68]
+Conflict-free: getIReq, getDReq, getDResp, getMMIOReq, getMMIOResp
+Conflicts: getIResp
+ 
+Method: getDReq
+Ready signal: toDmem_rv.port1__read[68]
+Conflict-free: getIReq, getIResp, getDResp, getMMIOReq, getMMIOResp
+Conflicts: getDReq
+ 
+Method: getDResp
+Ready signal: ! fromDmem_rv.port0__read[68]
+Conflict-free: getIReq, getIResp, getDReq, getMMIOReq, getMMIOResp
+Conflicts: getDResp
+ 
+Method: getMMIOReq
+Ready signal: toMMIO_rv.port1__read[68]
+Conflict-free: getIReq, getIResp, getDReq, getDResp, getMMIOResp
+Conflicts: getMMIOReq
+ 
+Method: getMMIOResp
+Ready signal: ! fromMMIO_rv.port0__read[68]
+Conflict-free: getIReq, getIResp, getDReq, getDResp, getMMIOReq
+Conflicts: getMMIOResp
+ 
+Rule schedule
+-------------
+Rule: do_tic_logging
+Predicate: True
+Blocking rules: (none)
+ 
+Rule: fetch
+Predicate: (! toImem_rv.port0__read[68]) && (state == 2'd0) && (! starting)
+Blocking rules: (none)
+ 
+Rule: decode
+Predicate: fromImem_rv.port1__read[68] && (state == 2'd1) && (! starting)
+Blocking rules: (none)
+ 
+Rule: execute
+Predicate: (dInst[6] || (! (dInst[4:3] == 2'b0)) ||
+	    ((((rv1 +
+		((dInst[35] &&
+		  ((dInst[35]
+		    ? dInst[34:32]
+		    : (_ :: Bit 3)) ==
+		   3'd0))
+		 ? sext dInst[31:20]
+		 : ((dInst[35] &&
+		     ((dInst[35]
+		       ? dInst[34:32]
+		       : (_ :: Bit 3)) ==
+		      3'd1))
+		    ? sext {dInst[31:25], dInst[11:7]}
+		    : ((dInst[35] &&
+			((dInst[35]
+			  ? dInst[34:32]
+			  : (_ :: Bit 3)) ==
+			 3'd2))
+		       ? sext {dInst[31], dInst[7], dInst[30:25], dInst[11:8], 1'b0}
+		       : ((dInst[35] &&
+			   ((dInst[35]
+			     ? dInst[34:32]
+			     : (_ :: Bit 3)) ==
+			    3'd3))
+			  ? {dInst[31:12], 12'b0}
+			  : ((dInst[35] &&
+			      ((dInst[35]
+				? dInst[34:32]
+				: (_ :: Bit 3)) ==
+			       3'd4))
+			     ? sext {dInst[31], dInst[19:12], dInst[20], dInst[30:21], 1'b0}
+			     : 32'd0))))))[31:2] ==
+	       30'd1006649340) ||
+	      ((rv1 +
+		((dInst[35] &&
+		  ((dInst[35]
+		    ? dInst[34:32]
+		    : (_ :: Bit 3)) ==
+		   3'd0))
+		 ? sext dInst[31:20]
+		 : ((dInst[35] &&
+		     ((dInst[35]
+		       ? dInst[34:32]
+		       : (_ :: Bit 3)) ==
+		      3'd1))
+		    ? sext {dInst[31:25], dInst[11:7]}
+		    : ((dInst[35] &&
+			((dInst[35]
+			  ? dInst[34:32]
+			  : (_ :: Bit 3)) ==
+			 3'd2))
+		       ? sext {dInst[31], dInst[7], dInst[30:25], dInst[11:8], 1'b0}
+		       : ((dInst[35] &&
+			   ((dInst[35]
+			     ? dInst[34:32]
+			     : (_ :: Bit 3)) ==
+			    3'd3))
+			  ? {dInst[31:12], 12'b0}
+			  : ((dInst[35] &&
+			      ((dInst[35]
+				? dInst[34:32]
+				: (_ :: Bit 3)) ==
+			       3'd4))
+			     ? sext {dInst[31], dInst[19:12], dInst[20], dInst[30:21], 1'b0}
+			     : 32'd0))))))[31:2] ==
+	       30'd1006649341) ||
+	      ((rv1 +
+		((dInst[35] &&
+		  ((dInst[35]
+		    ? dInst[34:32]
+		    : (_ :: Bit 3)) ==
+		   3'd0))
+		 ? sext dInst[31:20]
+		 : ((dInst[35] &&
+		     ((dInst[35]
+		       ? dInst[34:32]
+		       : (_ :: Bit 3)) ==
+		      3'd1))
+		    ? sext {dInst[31:25], dInst[11:7]}
+		    : ((dInst[35] &&
+			((dInst[35]
+			  ? dInst[34:32]
+			  : (_ :: Bit 3)) ==
+			 3'd2))
+		       ? sext {dInst[31], dInst[7], dInst[30:25], dInst[11:8], 1'b0}
+		       : ((dInst[35] &&
+			   ((dInst[35]
+			     ? dInst[34:32]
+			     : (_ :: Bit 3)) ==
+			    3'd3))
+			  ? {dInst[31:12], 12'b0}
+			  : ((dInst[35] &&
+			      ((dInst[35]
+				? dInst[34:32]
+				: (_ :: Bit 3)) ==
+			       3'd4))
+			     ? sext {dInst[31], dInst[19:12], dInst[20], dInst[30:21], 1'b0}
+			     : 32'd0))))))[31:2] ==
+	       30'd1006649342))
+	     ? ! toMMIO_rv.port0__read[68]
+	     : (! toDmem_rv.port0__read[68]))) &&
+	   (state == 2'd2) && (! starting)
+Blocking rules: (none)
+ 
+Rule: writeback
+Predicate: retired.i_notFull &&
+	   (dInst[6] || (! (dInst[4:3] == 2'b0)) ||
+	    (mem_business[0]
+	     ? fromMMIO_rv.port1__read[68]
+	     : fromDmem_rv.port1__read[68])) &&
+	   ((! dInst[36]) ||
+	    (dInst[11:7] == 5'd0) ||
+	    dInst[6] || (! (dInst[4:3] == 2'b0)) ||
+	    (((mem_business[5:3] == 3'b0) ||
+	      (mem_business[5:3] == 3'b1) ||
+	      (mem_business[5:3] == 3'b100) || (mem_business[5:3] == 3'b101))
+	     ? mem_business[0]
+	       ? fromMMIO_rv.port1__read[68]
+	       : fromDmem_rv.port1__read[68]
+	     : ((! (mem_business[5:3] == 3'b10)) ||
+		(mem_business[0]
+		 ? fromMMIO_rv.port1__read[68]
+		 : fromDmem_rv.port1__read[68])))) &&
+	   (state == 2'd3) && (! starting)
+Blocking rules: (none)
+ 
+Rule: administrative_konata_commit
+Predicate: retired.i_notEmpty
+Blocking rules: (none)
+ 
+Rule: administrative_konata_flush
+Predicate: squashed.i_notEmpty
+Blocking rules: (none)
+ 
+Logical execution order: getIResp,
+			 getDResp,
+			 getMMIOResp,
+			 fetch,
+			 getIReq,
+			 decode,
+			 execute,
+			 getDReq,
+			 getMMIOReq,
+			 writeback,
+			 administrative_konata_commit,
+			 administrative_konata_flush,
+			 do_tic_logging
+
+============================================

@@ -454,7 +454,9 @@ module mkpipelined(RVIfc);
 		    let f = squashed.first();
 		    squashKonata(lfh, f);
 	endrule
-		
+	
+    
+
     method ActionValue#(Mem) getIReq();
 		toImem.deq();
 		return toImem.first();
