@@ -6,6 +6,9 @@ import Vector::*;
 import KonataHelper::*;
 import Printf::*;
 import Ehr::*;
+import Cache::*;
+import MainMem::*;
+import MemTypes::*;
 
 typedef struct { Bit#(4) byte_en; Bit#(32) addr; Bit#(32) data; } Mem deriving (Eq, FShow, Bits);
 
@@ -63,8 +66,8 @@ module mkpipelined(RVIfc);
     FIFO#(Mem) fromImem <- mkBypassFIFO;
     FIFO#(Mem) toDmem <- mkBypassFIFO;
     FIFO#(Mem) fromDmem <- mkBypassFIFO;
-    FIFO#(Mem) toMMIO <- mkBypassFIFO;
-    FIFO#(Mem) fromMMIO <- mkBypassFIFO;
+    FIFO#(MainMemReq) toMMIO <- mkBypassFIFO;
+    FIFO#(MainMemResp) fromMMIO <- mkBypassFIFO;
 
     FIFO#(F2D) f2d <- mkFIFO;
     FIFO#(D2E) d2e <- mkFIFO;
@@ -87,6 +90,9 @@ module mkpipelined(RVIfc);
 
     
     Reg#(Bool) starting <- mkReg(True);
+
+    Cache imemCache <- mkCache;
+    Cache dmemCache <- mkCache;
 	rule do_tic_logging;
         if (starting) begin
             let f <- $fopen(dumpFile, "w") ;
@@ -114,20 +120,16 @@ module mkpipelined(RVIfc);
             let iid <- fetch1Konata(lfh, fresh_id, 0);
             labelKonataLeft(lfh, iid, $format("PC %x", pc[1]));
             // TODO implement fetch
-            
-
-
-
-
-            
             // current_id <= iid;
-            let req = Mem {
-                byte_en : 0,
+            let req = MainMemReq {
+                write : 0,
                 addr : pc[1],
                 data : 0
             };
 
-            toImem.enq(req);
+            imemCache.putFromProc(req)
+
+            // toImem.enq(req);
 
             F2D fetchInfo = F2D {
                 pc: pc[1],
@@ -153,7 +155,8 @@ module mkpipelined(RVIfc);
 
         F2D fetchInfo = f2d.first();
 
-        let resp = fromImem.first();
+        // let resp = fromImem.first();
+        let resp = imemCache.getToProc();
         let instr = resp.data;
         let decodedInst = decodeInst(instr);
 
@@ -196,7 +199,7 @@ module mkpipelined(RVIfc);
                 k_id: fetchInfo.k_id
             };
 
-            fromImem.deq();
+            imemCache.dequeProc();
             f2d.deq();
             d2e.enq( decodeInfo );
 
@@ -257,8 +260,9 @@ module mkpipelined(RVIfc);
                 data = rv2 << shift_amount;
                 addr = {addr[31:2], 2'b0};
                 isUnsigned = funct3[2];
-                let type_mem = (dInst.inst[5] == 1) ? byte_en : 0;
-                let req = Mem {byte_en : type_mem,
+                let write = (dInst.inst[5] == 1) ? 1 : 0;
+                let req = MainMemReq {
+                        write : write
                         addr : addr,
                         data : data};
                 if (isMMIO(addr)) begin 
@@ -268,7 +272,7 @@ module mkpipelined(RVIfc);
                     mmio = True;
                 end else begin 
                     labelKonataLeft(lfh,current_id, $format(" MEM ", fshow(req)));
-                    toDmem.enq(req);
+                    dmemCache.putFromProc(req);
                 end
             end
             else if (isControlInst(dInst)) begin
@@ -390,8 +394,8 @@ module mkpipelined(RVIfc);
                 resp = fromMMIO.first();
 		        fromMMIO.deq();
 		    end else begin 
-                resp = fromDmem.first();
-		        fromDmem.deq();
+                resp = dmemCache.getToProc();
+		        dmemCache.dequeProc();
 		    end
             let mem_data = resp.data;
             mem_data = mem_data >> {mem_business.offset ,3'b0};

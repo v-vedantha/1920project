@@ -38,6 +38,7 @@ endfunction
 interface Cache;
     method Action putFromProc(MainMemReq e); // Make request
     method ActionValue#(MainMemResp) getToProc(); // Get request
+    method Action dequeProc(); // Get request
     method ActionValue#(MainMemReq) getToMem(); // Make request to main memory
     method Action putFromMem(MainMemResp e); // Get from main memory
 endinterface
@@ -266,8 +267,11 @@ module mkCache(Cache);
   endmethod
 
   method ActionValue#(MainMemResp) getToProc();
-      hitQ.deq();
       return hitQ.first();
+  endmethod
+
+  method Action# dequeProc();
+      hitQ.deq();
   endmethod
 
   method ActionValue#(MainMemReq) getToMem();
