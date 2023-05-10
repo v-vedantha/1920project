@@ -13,7 +13,7 @@ endinterface
 
 module mkMainMemFast(MainMem);
     BRAM_Configure cfg = defaultValue();
-    BRAM1Port#(LineAddr, Bit#(512)) bram <- mkBRAM1Server(cfg);
+    BRAM1Port#(LineAddr, Vector#(16, Word)) bram <- mkBRAM1Server(cfg);
     DelayLine#(1, MainMemResp) dl <- mkDL(); // Delay by 20 cycles
 
     rule deq;
@@ -37,7 +37,7 @@ endmodule
 
 module mkMainMem(MainMem);
     BRAM_Configure cfg = defaultValue();
-    BRAM1Port#(LineAddr, Bit#(512)) bram <- mkBRAM1Server(cfg);
+    BRAM1Port#(LineAddr, Vector#(16, Word)) bram <- mkBRAM1Server(cfg);
     DelayLine#(40, MainMemResp) dl <- mkDL(); // Delay by 20 cycles
 
     rule deq;

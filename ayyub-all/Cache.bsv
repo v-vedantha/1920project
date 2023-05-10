@@ -29,10 +29,15 @@ typedef struct {
 } AddrInfo deriving (Eq, FShow, Bits, Bounded);
 
 function AddrInfo extractAddrInfo (LineAddr addr);
-    
-    BlockOffset bo = addr[numBlockBits - 1 : 0];
-    LineIndex li = addr[numBlockBits + numCacheLineBits - 1 : numBlockBits];
-    CacheTag ct = addr[addrSize - 1 : numBlockBits + numCacheLineBits];
+
+    Integer end_multiple = 1;
+    Integer end_block_offset = numBlockBits - 1 + (end_multiple + 1);
+    Integer end_cache_line = numCacheLineBits - 1 + (end_block_offset + 1);
+    Integer end_tag = numTagBits - 1 + (end_cache_line + 1);
+
+    BlockOffset bo = addr[end_block_offset : 2];
+    LineIndex li = addr[end_cache_line : end_block_offset + 1];
+    CacheTag ct = addr[end_tag : end_cache_line + 1];
     
     AddrInfo info = AddrInfo { tag: ct, lineIndex: li, blockOffset: bo };
     return info;
@@ -60,7 +65,7 @@ module mkCache(Cache);
   BRAM1Port#( Bit#(7), Maybe#(CacheTag) ) tagArray <- mkBRAM1Server(cfg);
 
   BRAM_Configure cfg2 = defaultValue;
-  BRAM1Port#( Bit#(7), Vector#(16, Word) ) dataArray <- mkBRAM1Server(cfg2);
+  BRAM1Port#( Bit#(7), CacheLine ) dataArray <- mkBRAM1Server(cfg2);
 
   BRAM_Configure cfg3 = defaultValue;
   BRAM1Port#( Bit#(7), Bool ) cleanArray <- mkBRAM1Server(cfg3);
