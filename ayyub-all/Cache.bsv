@@ -1,3 +1,4 @@
+import Vector::*;
 import BRAM::*;
 import FIFO::*;
 import FIFOF::*;
@@ -5,15 +6,18 @@ import SpecialFIFOs::*;
 import Ehr::*;
 import MemTypes::*;
 
-Integer addrSize = 26;
+Integer addrSize = 32;
 
 Integer numCacheLines = 128;
+Integer numWordsPerLine = 16;
 
+Integer numBlockBits = 4; // log2(16);
 Integer numCacheLineBits = 7; // log2(128)
-Integer numTagBits = 19; // 26 - 7
+Integer numTagBits = 21; // 32 - 7 - 4;
 
+typedef Bit#(4) BlockOffset;
 typedef Bit#(7) LineIndex;
-typedef Bit#(19) CacheTag;
+typedef Bit#(21) CacheTag;
 
 typedef enum { Ready, Assess, StartMiss, SendFillReq, WaitFillResp,  FinishProcessStb } CacheState deriving (Eq, FShow, Bits);
 typedef enum { Ld, St } ReqType deriving (Eq, FShow, Bits);
@@ -21,13 +25,16 @@ typedef enum { Ld, St } ReqType deriving (Eq, FShow, Bits);
 typedef struct {
     CacheTag tag;
     LineIndex lineIndex;
+    BlockOffset blockOffset;
 } AddrInfo deriving (Eq, FShow, Bits, Bounded);
 
 function AddrInfo extractAddrInfo (LineAddr addr);
-    LineIndex li = addr[numCacheLineBits - 1 : 0];
-    CacheTag ct = addr[addrSize - 1 : numCacheLineBits];
     
-    AddrInfo info = AddrInfo { tag: ct, lineIndex: li };
+    BlockOffset bo = addr[numBlockBits - 1 : 0];
+    LineIndex li = addr[numBlockBits + numCacheLineBits - 1 : numBlockBits];
+    CacheTag ct = addr[addrSize - 1 : numBlockBits + numCacheLineBits];
+    
+    AddrInfo info = AddrInfo { tag: ct, lineIndex: li, blockOffset: bo };
     return info;
 endfunction
 
@@ -52,7 +59,7 @@ module mkCache(Cache);
   BRAM1Port#( Bit#(7), Maybe#(CacheTag) ) tagArray <- mkBRAM1Server(cfg);
 
   BRAM_Configure cfg2 = defaultValue;
-  BRAM1Port#( Bit#(7), CWord ) dataArray <- mkBRAM1Server(cfg2);
+  BRAM1Port#( Bit#(7), Vector#(16, Word) ) dataArray <- mkBRAM1Server(cfg2);
 
   BRAM_Configure cfg3 = defaultValue;
   BRAM1Port#( Bit#(7), Bool ) cleanArray <- mkBRAM1Server(cfg3);
@@ -69,7 +76,7 @@ module mkCache(Cache);
   Reg#(AddrInfo) requestInfo <- mkRegU;
 
   Reg#(Maybe#(CacheTag)) cacheTableTag <- mkRegU;
-  Reg#(CWord) cacheTableData <- mkRegU;
+  Reg#(CacheLine) cacheTableLine <- mkRegU;
   Reg#(Bool) cacheTableClean <- mkRegU;
 
   FIFOF#(MainMemReq) stb <- mkSizedFIFOF(1);
@@ -92,7 +99,7 @@ module mkCache(Cache);
       Maybe#(CacheTag) maybeTableTag <- tagArray.portA.response.get();
 
       CacheTag tableTag = fromMaybe(?, maybeTableTag);
-      CWord tableData <- dataArray.portA.response.get();
+      CacheLine tableLine <- dataArray.portA.response.get();
       Bool tableClean <- cleanArray.portA.response.get();
 
       Bool gotFromStb = False;
@@ -136,7 +143,7 @@ module mkCache(Cache);
         end
         else begin
           cacheTableTag <= maybeTableTag;
-          cacheTableData <= tableData;
+          cacheTableLine <= tableLine;
           cacheTableClean <= tableClean;
 
           cacheState <= StartMiss;

@@ -1,4 +1,6 @@
-typedef Bit#(26) LineAddr;
+import Vector::*;
+
+typedef Bit#(32) LineAddr;
 typedef struct { 
                 Bit#(1) write;
                 LineAddr addr;
@@ -7,6 +9,6 @@ typedef struct {
 
 typedef Bit#(512) MainMemResp;
 
-typedef Bit#(512) CWord;
-
 typedef Bit#(32) Word;
+
+typedef Vector#(16, Word) CacheLine;
