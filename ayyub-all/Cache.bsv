@@ -13,11 +13,11 @@ Integer numWordsPerLine = 16;
 
 Integer numBlockBits = 4; // log2(16);
 Integer numCacheLineBits = 7; // log2(128)
-Integer numTagBits = 21; // 32 - 7 - 4;
+Integer numTagBits = 19; // 32 - 7 - 4 - 2;
 
 typedef Bit#(4) BlockOffset;
 typedef Bit#(7) LineIndex;
-typedef Bit#(21) CacheTag;
+typedef Bit#(19) CacheTag;
 
 typedef enum { Ready, Assess, StartMiss, SendFillReq, WaitFillResp,  FinishProcessStb } CacheState deriving (Eq, FShow, Bits);
 typedef enum { Ld, St } ReqType deriving (Eq, FShow, Bits);
@@ -28,7 +28,7 @@ typedef struct {
     BlockOffset blockOffset;
 } AddrInfo deriving (Eq, FShow, Bits, Bounded);
 
-function AddrInfo extractAddrInfo (LineAddr addr);
+function AddrInfo extractAddrInfo (CacheAddr addr);
 
     Integer end_multiple = 1;
     Integer end_block_offset = numBlockBits - 1 + (end_multiple + 1);
@@ -48,9 +48,11 @@ endfunction
 
 
 interface Cache;
-    method Action putFromProc(MainMemReq e); // Make request
-    method ActionValue#(MainMemResp) getToProc(); // Get request
-    method Action dequeProc(); // Get request
+    // TODO below
+  
+    method Action putFromProc(CacheReq e); // Make request
+    method ActionValue#(Word) getToProc(); // Gives processor returned value
+    method Action dequeProc(); // Removes value from processor return queue
     method ActionValue#(MainMemReq) getToMem(); // Make request to main memory
     method Action putFromMem(MainMemResp e); // Get from main memory
 endinterface
@@ -65,12 +67,12 @@ module mkCache(Cache);
   BRAM1Port#( Bit#(7), Maybe#(CacheTag) ) tagArray <- mkBRAM1Server(cfg);
 
   BRAM_Configure cfg2 = defaultValue;
-  BRAM1Port#( Bit#(7), CacheLine ) dataArray <- mkBRAM1Server(cfg2);
+  BRAM1Port#( Bit#(7), Line ) dataArray <- mkBRAM1Server(cfg2);
 
   BRAM_Configure cfg3 = defaultValue;
   BRAM1Port#( Bit#(7), Bool ) cleanArray <- mkBRAM1Server(cfg3);
 
-  FIFO#(MainMemResp) hitQ <- mkBypassFIFO;
+  FIFO#(Word) hitQ <- mkBypassFIFO;
   // Reg#(MainMemReq) missReq <- mkRegU;
 
   FIFO#(MainMemReq) memReqQ <- mkFIFO;
@@ -78,16 +80,17 @@ module mkCache(Cache);
 
 
 
-  Reg#(MainMemReq) cacheReq <- mkRegU;
+  Reg#(CacheReq) cacheReq <- mkRegU;
   Reg#(AddrInfo) requestInfo <- mkRegU;
 
   Reg#(Maybe#(CacheTag)) cacheTableTag <- mkRegU;
-  Reg#(CacheLine) cacheTableLine <- mkRegU;
+  Reg#(Line) cacheTableLine <- mkRegU;
+  Reg#(Word) cacheTableData <- mkRegU;
   Reg#(Bool) cacheTableClean <- mkRegU;
 
-  FIFOF#(MainMemReq) stb <- mkSizedFIFOF(1);
+  // FIFOF#(MainMemReq) stb <- mkSizedFIFOF(1);
 
-  Ehr#(2, Bool) lockCache <- mkEhr(False);
+  // Ehr#(2, Bool) lockCache <- mkEhr(False);
 
 
   ReqType reqType = cacheReq.write == 1 ? St : Ld;
@@ -105,27 +108,27 @@ module mkCache(Cache);
       Maybe#(CacheTag) maybeTableTag <- tagArray.portA.response.get();
 
       CacheTag tableTag = fromMaybe(?, maybeTableTag);
-      CacheLine tableLine <- dataArray.portA.response.get();
+      Line tableLine <- dataArray.portA.response.get();
+      Word tableData = tableLine[requestInfo.blockOffset];
       Bool tableClean <- cleanArray.portA.response.get();
 
-      Bool gotFromStb = False;
-      if (reqType == Ld && stb.notEmpty()) begin
-        MainMemReq buf_req = stb.first();
+      // Bool gotFromStb = False;
+      // if (reqType == Ld && stb.notEmpty()) begin
+      //   MainMemReq buf_req = stb.first();
 
-        // Check if store buffer val matches
-        if (buf_req.addr == cacheReq.addr) begin
-          hitQ.enq(buf_req.data);
-          gotFromStb = True;
+      //   // Check if store buffer val matches
+      //   if (buf_req.addr == cacheReq.addr) begin
+      //     hitQ.enq(buf_req.data);
+      //     gotFromStb = True;
 
-          cacheState <= Ready;
-        end
-      end
+      //     cacheState <= Ready;
+      //   end
+      // end
 
-      if (!gotFromStb) begin
+      // if (!gotFromStb) begin
         Bool isHit = True;
 
-        if (reqType == St && !isValid(maybeTableTag)) isHit = True;
-        else if (!isValid(maybeTableTag)) isHit = False;
+        if (!isValid(maybeTableTag)) isHit = False;
         else if (tableTag != requestInfo.tag) isHit = False;
 
         if (isHit) begin
@@ -134,10 +137,14 @@ module mkCache(Cache);
             hitQ.enq(tableData);
           end
           else begin
+            
+            Line newLine = take(tableLine);
+            newLine[requestInfo.blockOffset] = cacheReq.data;
+          
             dataArray.portA.request.put(BRAMRequest{write: True, // False for read
                                                     responseOnWrite: False,
                                                     address: requestInfo.lineIndex,
-                                                    datain: cacheReq.data});
+                                                    datain: newLine});
 
             cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
                                                     responseOnWrite: False,
@@ -150,11 +157,12 @@ module mkCache(Cache);
         else begin
           cacheTableTag <= maybeTableTag;
           cacheTableLine <= tableLine;
+          cacheTableData <= tableData;
           cacheTableClean <= tableClean;
 
           cacheState <= StartMiss;
         end
-      end
+      // end
 
   endrule
 
@@ -163,7 +171,8 @@ module mkCache(Cache);
       // Writeback request
       if (isValid(cacheTableTag) && !cacheTableClean) begin
         CacheTag tableTag = fromMaybe(?, cacheTableTag);
-        MainMemReq writeback_req = MainMemReq { write: 1'b1, addr: {tableTag, requestInfo.lineIndex}, data: cacheTableData };
+        LineAddr la = {tableTag, requestInfo.lineIndex};
+        MainMemReq writeback_req = MainMemReq { write: 1'b1, addr: la, data: cacheTableLine };
         memReqQ.enq(writeback_req);
 
         cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
@@ -176,7 +185,9 @@ module mkCache(Cache);
   endrule
 
   rule send_fill_rule if (cacheState == SendFillReq);
-      MainMemReq missing_line_req = MainMemReq { write: 1'b0, addr: cacheReq.addr, data: ? };
+      LineAddr la = { requestInfo.tag, requestInfo.lineIndex };
+  
+      MainMemReq missing_line_req = MainMemReq { write: 1'b0, addr: la, data: ? };
       memReqQ.enq(missing_line_req);
 
       cacheState <= WaitFillResp;
@@ -201,13 +212,18 @@ module mkCache(Cache);
                                                 address: requestInfo.lineIndex,
                                                 datain: True});
 
-        hitQ.enq(resp);
+        Word respData = resp[requestInfo.blockOffset];
+        hitQ.enq(respData);
       end
       else begin
+        
+        Line newLine = take(resp);
+        newLine[requestInfo.blockOffset] = cacheReq.data;
+      
         dataArray.portA.request.put(BRAMRequest{write: True, // False for read
-                                                  responseOnWrite: False,
-                                                  address: requestInfo.lineIndex,
-                                                  datain: cacheReq.data});
+                                                responseOnWrite: False,
+                                                address: requestInfo.lineIndex,
+                                                datain: newLine});
 
         cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
                                                 responseOnWrite: False,
@@ -220,40 +236,40 @@ module mkCache(Cache);
       cacheState <= Ready;
   endrule
 
-  rule start_process_stb if (cacheState == Ready && !lockCache[1]);
-      MainMemReq buf_req = stb.first();
-      AddrInfo ai = extractAddrInfo(buf_req.addr);
+  // rule start_process_stb if (cacheState == Ready && !lockCache[1]);
+  //     MainMemReq buf_req = stb.first();
+  //     AddrInfo ai = extractAddrInfo(buf_req.addr);
 
-      tagArray.portA.request.put(BRAMRequest{write: False, // False for read
-                                            responseOnWrite: False,
-                                            address: ai.lineIndex,
-                                            datain: ?});
+  //     tagArray.portA.request.put(BRAMRequest{write: False, // False for read
+  //                                           responseOnWrite: False,
+  //                                           address: ai.lineIndex,
+  //                                           datain: ?});
       
-      dataArray.portA.request.put(BRAMRequest{write: False, // False for read
-                                            responseOnWrite: False,
-                                            address: ai.lineIndex,
-                                            datain: ?});
+  //     dataArray.portA.request.put(BRAMRequest{write: False, // False for read
+  //                                           responseOnWrite: False,
+  //                                           address: ai.lineIndex,
+  //                                           datain: ?});
       
-      cleanArray.portA.request.put(BRAMRequest{write: False, // False for read
-                                            responseOnWrite: False,
-                                            address: ai.lineIndex,
-                                            datain: ?});
+  //     cleanArray.portA.request.put(BRAMRequest{write: False, // False for read
+  //                                           responseOnWrite: False,
+  //                                           address: ai.lineIndex,
+  //                                           datain: ?});
       
-      cacheReq <= buf_req;
-      requestInfo <= ai;
+  //     cacheReq <= buf_req;
+  //     requestInfo <= ai;
 
-      stb.deq();
+  //     stb.deq();
 
-      cacheState <= Assess;
-  endrule
+  //     cacheState <= Assess;
+  // endrule
 
-  rule clear_lock;
-      lockCache[1] <= False;
-  endrule
+  // rule clear_lock;
+  //     lockCache[1] <= False;
+  // endrule
 
-  method Action putFromProc(MainMemReq e) if (cacheState == Ready);
-      if (e.write == 1) stb.enq(e);
-      else lockCache[0] <= True;
+  method Action putFromProc(CacheReq e) if (cacheState == Ready);
+      // if (e.write == 1) stb.enq(e);
+      // else lockCache[0] <= True;
   
       AddrInfo ai = extractAddrInfo(e.addr);
       
@@ -278,11 +294,13 @@ module mkCache(Cache);
       cacheState <= Assess;
   endmethod
 
-  method ActionValue#(MainMemResp) getToProc();
+  // TODO below
+
+  method ActionValue#(Word) getToProc();
       return hitQ.first();
   endmethod
 
-  method Action# dequeProc();
+  method Action dequeProc();
       hitQ.deq();
   endmethod
 

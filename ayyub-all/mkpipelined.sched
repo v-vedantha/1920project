@@ -303,6 +303,356 @@ Rule: scoreboard_31_canonicalize
 Predicate: True
 Blocking rules: (none)
  
+Rule: imemCache_tagArray_serverAdapter_outData_enqueue
+Predicate: imemCache_tagArray_serverAdapter_outData_enqw.whas &&
+	   ((! imemCache_tagArray_serverAdapter_outData_dequeueing.whas) ||
+	    imemCache_tagArray_serverAdapter_outData_ff.i_notEmpty)
+Blocking rules: (none)
+ 
+Rule: imemCache_tagArray_serverAdapter_outData_dequeue
+Predicate: imemCache_tagArray_serverAdapter_outData_dequeueing.whas &&
+	   imemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+Blocking rules: (none)
+ 
+Rule: imemCache_tagArray_serverAdapter_cnt_finalAdd
+Predicate: imemCache_tagArray_serverAdapter_cnt_1.whas ||
+	   imemCache_tagArray_serverAdapter_cnt_2.whas ||
+	   imemCache_tagArray_serverAdapter_cnt_3.whas
+Blocking rules: (none)
+ 
+Rule: imemCache_tagArray_serverAdapter_s1__dreg_update
+Predicate: True
+Blocking rules: (none)
+ 
+Rule: imemCache_tagArray_serverAdapter_stageReadResponseAlways
+Predicate: imemCache_tagArray_serverAdapter_writeWithResp.whas
+Blocking rules: (none)
+ 
+Rule: imemCache_tagArray_serverAdapter_moveToOutFIFO
+Predicate: ((! imemCache_tagArray_serverAdapter_s1[0]) ||
+	    imemCache_tagArray_serverAdapter_outData_ff.i_notFull) &&
+	   imemCache_tagArray_serverAdapter_s1[1]
+Blocking rules: (none)
+ 
+Rule: imemCache_tagArray_serverAdapter_overRun
+Predicate: imemCache_tagArray_serverAdapter_s1[1] &&
+	   ((! imemCache_tagArray_serverAdapter_outData_beforeEnq.read) ||
+	    (! imemCache_tagArray_serverAdapter_outData_beforeDeq.read) ||
+	    (! imemCache_tagArray_serverAdapter_outData_ff.i_notFull))
+Blocking rules: (none)
+ 
+Rule: imemCache_dataArray_serverAdapter_outData_enqueue
+Predicate: imemCache_dataArray_serverAdapter_outData_enqw.whas &&
+	   ((! imemCache_dataArray_serverAdapter_outData_dequeueing.whas) ||
+	    imemCache_dataArray_serverAdapter_outData_ff.i_notEmpty)
+Blocking rules: (none)
+ 
+Rule: imemCache_dataArray_serverAdapter_outData_dequeue
+Predicate: imemCache_dataArray_serverAdapter_outData_dequeueing.whas &&
+	   imemCache_dataArray_serverAdapter_outData_ff.i_notEmpty
+Blocking rules: (none)
+ 
+Rule: imemCache_dataArray_serverAdapter_cnt_finalAdd
+Predicate: imemCache_dataArray_serverAdapter_cnt_1.whas ||
+	   imemCache_dataArray_serverAdapter_cnt_2.whas ||
+	   imemCache_dataArray_serverAdapter_cnt_3.whas
+Blocking rules: (none)
+ 
+Rule: imemCache_dataArray_serverAdapter_s1__dreg_update
+Predicate: True
+Blocking rules: (none)
+ 
+Rule: imemCache_dataArray_serverAdapter_stageReadResponseAlways
+Predicate: imemCache_dataArray_serverAdapter_writeWithResp.whas
+Blocking rules: (none)
+ 
+Rule: imemCache_dataArray_serverAdapter_moveToOutFIFO
+Predicate: ((! imemCache_dataArray_serverAdapter_s1[0]) ||
+	    imemCache_dataArray_serverAdapter_outData_ff.i_notFull) &&
+	   imemCache_dataArray_serverAdapter_s1[1]
+Blocking rules: (none)
+ 
+Rule: imemCache_dataArray_serverAdapter_overRun
+Predicate: imemCache_dataArray_serverAdapter_s1[1] &&
+	   ((! imemCache_dataArray_serverAdapter_outData_beforeEnq.read) ||
+	    (! imemCache_dataArray_serverAdapter_outData_beforeDeq.read) ||
+	    (! imemCache_dataArray_serverAdapter_outData_ff.i_notFull))
+Blocking rules: (none)
+ 
+Rule: imemCache_cleanArray_serverAdapter_outData_enqueue
+Predicate: imemCache_cleanArray_serverAdapter_outData_enqw.whas &&
+	   ((! imemCache_cleanArray_serverAdapter_outData_dequeueing.whas) ||
+	    imemCache_cleanArray_serverAdapter_outData_ff.i_notEmpty)
+Blocking rules: (none)
+ 
+Rule: imemCache_cleanArray_serverAdapter_outData_dequeue
+Predicate: imemCache_cleanArray_serverAdapter_outData_dequeueing.whas &&
+	   imemCache_cleanArray_serverAdapter_outData_ff.i_notEmpty
+Blocking rules: (none)
+ 
+Rule: imemCache_cleanArray_serverAdapter_cnt_finalAdd
+Predicate: imemCache_cleanArray_serverAdapter_cnt_1.whas ||
+	   imemCache_cleanArray_serverAdapter_cnt_2.whas ||
+	   imemCache_cleanArray_serverAdapter_cnt_3.whas
+Blocking rules: (none)
+ 
+Rule: imemCache_cleanArray_serverAdapter_s1__dreg_update
+Predicate: True
+Blocking rules: (none)
+ 
+Rule: imemCache_cleanArray_serverAdapter_stageReadResponseAlways
+Predicate: imemCache_cleanArray_serverAdapter_writeWithResp.whas
+Blocking rules: (none)
+ 
+Rule: imemCache_cleanArray_serverAdapter_moveToOutFIFO
+Predicate: ((! imemCache_cleanArray_serverAdapter_s1[0]) ||
+	    imemCache_cleanArray_serverAdapter_outData_ff.i_notFull) &&
+	   imemCache_cleanArray_serverAdapter_s1[1]
+Blocking rules: (none)
+ 
+Rule: imemCache_cleanArray_serverAdapter_overRun
+Predicate: imemCache_cleanArray_serverAdapter_s1[1] &&
+	   ((! imemCache_cleanArray_serverAdapter_outData_beforeEnq.read) ||
+	    (! imemCache_cleanArray_serverAdapter_outData_beforeDeq.read) ||
+	    (! imemCache_cleanArray_serverAdapter_outData_ff.i_notFull))
+Blocking rules: (none)
+ 
+Rule: imemCache_assess_rule
+Predicate: imemCache_tagArray_serverAdapter_outData_beforeDeq.read &&
+	   (imemCache_tagArray_serverAdapter_outData_ff.i_notEmpty ||
+	    imemCache_tagArray_serverAdapter_outData_enqw.whas) &&
+	   imemCache_dataArray_serverAdapter_outData_beforeDeq.read &&
+	   (imemCache_dataArray_serverAdapter_outData_ff.i_notEmpty ||
+	    imemCache_dataArray_serverAdapter_outData_enqw.whas) &&
+	   (imemCache_cleanArray_serverAdapter_outData_ff.i_notEmpty ||
+	    imemCache_cleanArray_serverAdapter_outData_enqw.whas) &&
+	   (((imemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+	      ? imemCache_tagArray_serverAdapter_outData_ff.first[19]
+	      : ((! imemCache_tagArray_serverAdapter_outData_enqw.whas) ||
+		 imemCache_tagArray_serverAdapter_outData_enqw.wget[19])) &&
+	     (((imemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+		? ! imemCache_tagArray_serverAdapter_outData_ff.first[19]
+		: (imemCache_tagArray_serverAdapter_outData_enqw.whas &&
+		   (! imemCache_tagArray_serverAdapter_outData_enqw.wget[19])))
+	       ? (_ :: Bit 19)
+	       : ((imemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+		   ? imemCache_tagArray_serverAdapter_outData_ff.first[19]
+		   : (imemCache_tagArray_serverAdapter_outData_enqw.whas &&
+		      imemCache_tagArray_serverAdapter_outData_enqw.wget[19]))
+		  ? imemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+		    ? imemCache_tagArray_serverAdapter_outData_ff.first[19]
+		      ? imemCache_tagArray_serverAdapter_outData_ff.first[18:0]
+		      : (_ :: Bit 19)
+		    : (((! imemCache_tagArray_serverAdapter_outData_enqw.whas) ||
+			(! imemCache_tagArray_serverAdapter_outData_enqw.wget[19]))
+		       ? (_ :: Bit 19)
+		       : imemCache_tagArray_serverAdapter_outData_enqw.wget[18:0])
+		  : (_ :: Bit 19))) ==
+	      imemCache_requestInfo[29:11]))
+	    ? imemCache_cacheReq[64]
+	      ? (imemCache_dataArray_serverAdapter_cnt .< 3'd3) &&
+		(imemCache_cleanArray_serverAdapter_cnt .< 3'd3)
+	      : (! imemCache_hitQ_rv.port0__read[32])
+	    : imemCache_cleanArray_serverAdapter_outData_beforeDeq.read) &&
+	   (imemCache_cacheState == 3'd1)
+Blocking rules: (none)
+ 
+Rule: imemCache_start_miss_rule
+Predicate: ((! imemCache_cacheTableTag[19]) || imemCache_cacheTableClean ||
+	    ((imemCache_cleanArray_serverAdapter_cnt .< 3'd3) &&
+	     imemCache_memReqQ.i_notFull)) &&
+	   (imemCache_cacheState == 3'd2)
+Blocking rules: (none)
+ 
+Rule: imemCache_send_fill_rule
+Predicate: imemCache_memReqQ.i_notFull && (imemCache_cacheState == 3'd3)
+Blocking rules: (none)
+ 
+Rule: imemCache_wait_fill_rule
+Predicate: (imemCache_dataArray_serverAdapter_cnt .< 3'd3) &&
+	   (imemCache_cleanArray_serverAdapter_cnt .< 3'd3) &&
+	   (imemCache_tagArray_serverAdapter_cnt .< 3'd3) &&
+	   imemCache_memRespQ.i_notEmpty &&
+	   (imemCache_cacheReq[64] ||
+	    (! imemCache_hitQ_rv.port0__read[32])) &&
+	   (imemCache_cacheState == 3'd4)
+Blocking rules: (none)
+ 
+Rule: dmemCache_tagArray_serverAdapter_outData_enqueue
+Predicate: dmemCache_tagArray_serverAdapter_outData_enqw.whas &&
+	   ((! dmemCache_tagArray_serverAdapter_outData_dequeueing.whas) ||
+	    dmemCache_tagArray_serverAdapter_outData_ff.i_notEmpty)
+Blocking rules: (none)
+ 
+Rule: dmemCache_tagArray_serverAdapter_outData_dequeue
+Predicate: dmemCache_tagArray_serverAdapter_outData_dequeueing.whas &&
+	   dmemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+Blocking rules: (none)
+ 
+Rule: dmemCache_tagArray_serverAdapter_cnt_finalAdd
+Predicate: dmemCache_tagArray_serverAdapter_cnt_1.whas ||
+	   dmemCache_tagArray_serverAdapter_cnt_2.whas ||
+	   dmemCache_tagArray_serverAdapter_cnt_3.whas
+Blocking rules: (none)
+ 
+Rule: dmemCache_tagArray_serverAdapter_s1__dreg_update
+Predicate: True
+Blocking rules: (none)
+ 
+Rule: dmemCache_tagArray_serverAdapter_stageReadResponseAlways
+Predicate: dmemCache_tagArray_serverAdapter_writeWithResp.whas
+Blocking rules: (none)
+ 
+Rule: dmemCache_tagArray_serverAdapter_moveToOutFIFO
+Predicate: ((! dmemCache_tagArray_serverAdapter_s1[0]) ||
+	    dmemCache_tagArray_serverAdapter_outData_ff.i_notFull) &&
+	   dmemCache_tagArray_serverAdapter_s1[1]
+Blocking rules: (none)
+ 
+Rule: dmemCache_tagArray_serverAdapter_overRun
+Predicate: dmemCache_tagArray_serverAdapter_s1[1] &&
+	   ((! dmemCache_tagArray_serverAdapter_outData_beforeEnq.read) ||
+	    (! dmemCache_tagArray_serverAdapter_outData_beforeDeq.read) ||
+	    (! dmemCache_tagArray_serverAdapter_outData_ff.i_notFull))
+Blocking rules: (none)
+ 
+Rule: dmemCache_dataArray_serverAdapter_outData_enqueue
+Predicate: dmemCache_dataArray_serverAdapter_outData_enqw.whas &&
+	   ((! dmemCache_dataArray_serverAdapter_outData_dequeueing.whas) ||
+	    dmemCache_dataArray_serverAdapter_outData_ff.i_notEmpty)
+Blocking rules: (none)
+ 
+Rule: dmemCache_dataArray_serverAdapter_outData_dequeue
+Predicate: dmemCache_dataArray_serverAdapter_outData_dequeueing.whas &&
+	   dmemCache_dataArray_serverAdapter_outData_ff.i_notEmpty
+Blocking rules: (none)
+ 
+Rule: dmemCache_dataArray_serverAdapter_cnt_finalAdd
+Predicate: dmemCache_dataArray_serverAdapter_cnt_1.whas ||
+	   dmemCache_dataArray_serverAdapter_cnt_2.whas ||
+	   dmemCache_dataArray_serverAdapter_cnt_3.whas
+Blocking rules: (none)
+ 
+Rule: dmemCache_dataArray_serverAdapter_s1__dreg_update
+Predicate: True
+Blocking rules: (none)
+ 
+Rule: dmemCache_dataArray_serverAdapter_stageReadResponseAlways
+Predicate: dmemCache_dataArray_serverAdapter_writeWithResp.whas
+Blocking rules: (none)
+ 
+Rule: dmemCache_dataArray_serverAdapter_moveToOutFIFO
+Predicate: ((! dmemCache_dataArray_serverAdapter_s1[0]) ||
+	    dmemCache_dataArray_serverAdapter_outData_ff.i_notFull) &&
+	   dmemCache_dataArray_serverAdapter_s1[1]
+Blocking rules: (none)
+ 
+Rule: dmemCache_dataArray_serverAdapter_overRun
+Predicate: dmemCache_dataArray_serverAdapter_s1[1] &&
+	   ((! dmemCache_dataArray_serverAdapter_outData_beforeEnq.read) ||
+	    (! dmemCache_dataArray_serverAdapter_outData_beforeDeq.read) ||
+	    (! dmemCache_dataArray_serverAdapter_outData_ff.i_notFull))
+Blocking rules: (none)
+ 
+Rule: dmemCache_cleanArray_serverAdapter_outData_enqueue
+Predicate: dmemCache_cleanArray_serverAdapter_outData_enqw.whas &&
+	   ((! dmemCache_cleanArray_serverAdapter_outData_dequeueing.whas) ||
+	    dmemCache_cleanArray_serverAdapter_outData_ff.i_notEmpty)
+Blocking rules: (none)
+ 
+Rule: dmemCache_cleanArray_serverAdapter_outData_dequeue
+Predicate: dmemCache_cleanArray_serverAdapter_outData_dequeueing.whas &&
+	   dmemCache_cleanArray_serverAdapter_outData_ff.i_notEmpty
+Blocking rules: (none)
+ 
+Rule: dmemCache_cleanArray_serverAdapter_cnt_finalAdd
+Predicate: dmemCache_cleanArray_serverAdapter_cnt_1.whas ||
+	   dmemCache_cleanArray_serverAdapter_cnt_2.whas ||
+	   dmemCache_cleanArray_serverAdapter_cnt_3.whas
+Blocking rules: (none)
+ 
+Rule: dmemCache_cleanArray_serverAdapter_s1__dreg_update
+Predicate: True
+Blocking rules: (none)
+ 
+Rule: dmemCache_cleanArray_serverAdapter_stageReadResponseAlways
+Predicate: dmemCache_cleanArray_serverAdapter_writeWithResp.whas
+Blocking rules: (none)
+ 
+Rule: dmemCache_cleanArray_serverAdapter_moveToOutFIFO
+Predicate: ((! dmemCache_cleanArray_serverAdapter_s1[0]) ||
+	    dmemCache_cleanArray_serverAdapter_outData_ff.i_notFull) &&
+	   dmemCache_cleanArray_serverAdapter_s1[1]
+Blocking rules: (none)
+ 
+Rule: dmemCache_cleanArray_serverAdapter_overRun
+Predicate: dmemCache_cleanArray_serverAdapter_s1[1] &&
+	   ((! dmemCache_cleanArray_serverAdapter_outData_beforeEnq.read) ||
+	    (! dmemCache_cleanArray_serverAdapter_outData_beforeDeq.read) ||
+	    (! dmemCache_cleanArray_serverAdapter_outData_ff.i_notFull))
+Blocking rules: (none)
+ 
+Rule: dmemCache_assess_rule
+Predicate: dmemCache_tagArray_serverAdapter_outData_beforeDeq.read &&
+	   (dmemCache_tagArray_serverAdapter_outData_ff.i_notEmpty ||
+	    dmemCache_tagArray_serverAdapter_outData_enqw.whas) &&
+	   dmemCache_dataArray_serverAdapter_outData_beforeDeq.read &&
+	   (dmemCache_dataArray_serverAdapter_outData_ff.i_notEmpty ||
+	    dmemCache_dataArray_serverAdapter_outData_enqw.whas) &&
+	   (dmemCache_cleanArray_serverAdapter_outData_ff.i_notEmpty ||
+	    dmemCache_cleanArray_serverAdapter_outData_enqw.whas) &&
+	   (((dmemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+	      ? dmemCache_tagArray_serverAdapter_outData_ff.first[19]
+	      : ((! dmemCache_tagArray_serverAdapter_outData_enqw.whas) ||
+		 dmemCache_tagArray_serverAdapter_outData_enqw.wget[19])) &&
+	     (((dmemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+		? ! dmemCache_tagArray_serverAdapter_outData_ff.first[19]
+		: (dmemCache_tagArray_serverAdapter_outData_enqw.whas &&
+		   (! dmemCache_tagArray_serverAdapter_outData_enqw.wget[19])))
+	       ? (_ :: Bit 19)
+	       : ((dmemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+		   ? dmemCache_tagArray_serverAdapter_outData_ff.first[19]
+		   : (dmemCache_tagArray_serverAdapter_outData_enqw.whas &&
+		      dmemCache_tagArray_serverAdapter_outData_enqw.wget[19]))
+		  ? dmemCache_tagArray_serverAdapter_outData_ff.i_notEmpty
+		    ? dmemCache_tagArray_serverAdapter_outData_ff.first[19]
+		      ? dmemCache_tagArray_serverAdapter_outData_ff.first[18:0]
+		      : (_ :: Bit 19)
+		    : (((! dmemCache_tagArray_serverAdapter_outData_enqw.whas) ||
+			(! dmemCache_tagArray_serverAdapter_outData_enqw.wget[19]))
+		       ? (_ :: Bit 19)
+		       : dmemCache_tagArray_serverAdapter_outData_enqw.wget[18:0])
+		  : (_ :: Bit 19))) ==
+	      dmemCache_requestInfo[29:11]))
+	    ? dmemCache_cacheReq[64]
+	      ? (dmemCache_dataArray_serverAdapter_cnt .< 3'd3) &&
+		(dmemCache_cleanArray_serverAdapter_cnt .< 3'd3)
+	      : (! dmemCache_hitQ_rv.port0__read[32])
+	    : dmemCache_cleanArray_serverAdapter_outData_beforeDeq.read) &&
+	   (dmemCache_cacheState == 3'd1)
+Blocking rules: (none)
+ 
+Rule: dmemCache_start_miss_rule
+Predicate: ((! dmemCache_cacheTableTag[19]) || dmemCache_cacheTableClean ||
+	    ((dmemCache_cleanArray_serverAdapter_cnt .< 3'd3) &&
+	     dmemCache_memReqQ.i_notFull)) &&
+	   (dmemCache_cacheState == 3'd2)
+Blocking rules: (none)
+ 
+Rule: dmemCache_send_fill_rule
+Predicate: dmemCache_memReqQ.i_notFull && (dmemCache_cacheState == 3'd3)
+Blocking rules: (none)
+ 
+Rule: dmemCache_wait_fill_rule
+Predicate: (dmemCache_dataArray_serverAdapter_cnt .< 3'd3) &&
+	   (dmemCache_cleanArray_serverAdapter_cnt .< 3'd3) &&
+	   (dmemCache_tagArray_serverAdapter_cnt .< 3'd3) &&
+	   dmemCache_memRespQ.i_notEmpty &&
+	   (dmemCache_cacheReq[64] ||
+	    (! dmemCache_hitQ_rv.port0__read[32])) &&
+	   (dmemCache_cacheState == 3'd4)
+Blocking rules: (none)
+ 
 Rule: do_tic_logging
 Predicate: True
 Blocking rules: (none)
@@ -972,11 +1322,11 @@ Predicate: d2e.i_notEmpty &&
 			       3'd3))
 			     ? {d2e.first[210:191], 12'b0}
 			     : ((d2e.first[214] &&
-				 ((d2e_first____d1791(...)[214]
-				   ? d2e_first____d1791(...)[213:211]
+				 ((d2e_first____d2564(...)[214]
+				   ? d2e_first____d2564(...)[213:211]
 				   : (_ :: Bit 3)) ==
 				  3'd4))
-				? sext {d2e.first[210], d2e.first[198:191], d2e_first____d1791(...)[199], d2e_first____d1791(...)[209:200], 1'b0}
+				? sext {d2e.first[210], d2e.first[198:191], d2e_first____d2564(...)[199], d2e_first____d2564(...)[209:200], 1'b0}
 				: 32'd0))))))[31:2] ==
 		  30'd1006649341) ||
 		 ((d2e.first[111:80] +
@@ -1005,11 +1355,11 @@ Predicate: d2e.i_notEmpty &&
 			       3'd3))
 			     ? {d2e.first[210:191], 12'b0}
 			     : ((d2e.first[214] &&
-				 ((d2e_first____d1791(...)[214]
-				   ? d2e_first____d1791(...)[213:211]
+				 ((d2e_first____d2564(...)[214]
+				   ? d2e_first____d2564(...)[213:211]
 				   : (_ :: Bit 3)) ==
 				  3'd4))
-				? sext {d2e.first[210], d2e.first[198:191], d2e_first____d1791(...)[199], d2e_first____d1791(...)[209:200], 1'b0}
+				? sext {d2e.first[210], d2e.first[198:191], d2e_first____d2564(...)[199], d2e_first____d2564(...)[209:200], 1'b0}
 				: 32'd0))))))[31:2] ==
 		  30'd1006649342))
 		? ! toMMIO_rv.port0__read[68]
@@ -1557,6 +1907,56 @@ Logical execution order: getIResp,
 			 scoreboard_28_canonicalize,
 			 scoreboard_29_canonicalize,
 			 scoreboard_30_canonicalize,
-			 scoreboard_31_canonicalize
+			 scoreboard_31_canonicalize,
+			 imemCache_start_miss_rule,
+			 imemCache_send_fill_rule,
+			 imemCache_wait_fill_rule,
+			 imemCache_tagArray_serverAdapter_stageReadResponseAlways,
+			 imemCache_tagArray_serverAdapter_overRun,
+			 imemCache_tagArray_serverAdapter_moveToOutFIFO,
+			 imemCache_tagArray_serverAdapter_s1__dreg_update,
+			 imemCache_dataArray_serverAdapter_overRun,
+			 imemCache_dataArray_serverAdapter_moveToOutFIFO,
+			 imemCache_cleanArray_serverAdapter_overRun,
+			 imemCache_cleanArray_serverAdapter_moveToOutFIFO,
+			 imemCache_assess_rule,
+			 imemCache_tagArray_serverAdapter_outData_enqueue,
+			 imemCache_tagArray_serverAdapter_outData_dequeue,
+			 imemCache_tagArray_serverAdapter_cnt_finalAdd,
+			 imemCache_dataArray_serverAdapter_stageReadResponseAlways,
+			 imemCache_dataArray_serverAdapter_outData_enqueue,
+			 imemCache_dataArray_serverAdapter_outData_dequeue,
+			 imemCache_dataArray_serverAdapter_cnt_finalAdd,
+			 imemCache_dataArray_serverAdapter_s1__dreg_update,
+			 imemCache_cleanArray_serverAdapter_stageReadResponseAlways,
+			 imemCache_cleanArray_serverAdapter_outData_enqueue,
+			 imemCache_cleanArray_serverAdapter_outData_dequeue,
+			 imemCache_cleanArray_serverAdapter_cnt_finalAdd,
+			 imemCache_cleanArray_serverAdapter_s1__dreg_update,
+			 dmemCache_start_miss_rule,
+			 dmemCache_send_fill_rule,
+			 dmemCache_wait_fill_rule,
+			 dmemCache_tagArray_serverAdapter_stageReadResponseAlways,
+			 dmemCache_tagArray_serverAdapter_overRun,
+			 dmemCache_tagArray_serverAdapter_moveToOutFIFO,
+			 dmemCache_tagArray_serverAdapter_s1__dreg_update,
+			 dmemCache_dataArray_serverAdapter_overRun,
+			 dmemCache_dataArray_serverAdapter_moveToOutFIFO,
+			 dmemCache_cleanArray_serverAdapter_overRun,
+			 dmemCache_cleanArray_serverAdapter_moveToOutFIFO,
+			 dmemCache_assess_rule,
+			 dmemCache_tagArray_serverAdapter_outData_enqueue,
+			 dmemCache_tagArray_serverAdapter_outData_dequeue,
+			 dmemCache_tagArray_serverAdapter_cnt_finalAdd,
+			 dmemCache_dataArray_serverAdapter_stageReadResponseAlways,
+			 dmemCache_dataArray_serverAdapter_outData_enqueue,
+			 dmemCache_dataArray_serverAdapter_outData_dequeue,
+			 dmemCache_dataArray_serverAdapter_cnt_finalAdd,
+			 dmemCache_dataArray_serverAdapter_s1__dreg_update,
+			 dmemCache_cleanArray_serverAdapter_stageReadResponseAlways,
+			 dmemCache_cleanArray_serverAdapter_outData_enqueue,
+			 dmemCache_cleanArray_serverAdapter_outData_dequeue,
+			 dmemCache_cleanArray_serverAdapter_cnt_finalAdd,
+			 dmemCache_cleanArray_serverAdapter_s1__dreg_update
 
 ===========================================
