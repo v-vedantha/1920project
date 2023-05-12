@@ -228,10 +228,10 @@ Predicate: iCache_tagArray_serverAdapter_outData_beforeDeq.read &&
 		       : iCache_tagArray_serverAdapter_outData_enqw.wget[18:0])
 		  : (_ :: Bit 19))) ==
 	      iCache_requestInfo[29:11]))
-	    ? iCache_cacheReq[64]
-	      ? (iCache_dataArray_serverAdapter_cnt .< 3'd3) &&
-		(iCache_cleanArray_serverAdapter_cnt .< 3'd3)
-	      : (! iCache_hitQ_rv.port0__read[32])
+	    ? (! iCache_hitQ_rv.port0__read[32]) &&
+	      ((! iCache_cacheReq[64]) ||
+	       ((iCache_dataArray_serverAdapter_cnt .< 3'd3) &&
+		(iCache_cleanArray_serverAdapter_cnt .< 3'd3)))
 	    : iCache_cleanArray_serverAdapter_outData_beforeDeq.read) &&
 	   (iCache_cacheState == 3'd1)
 Blocking rules: (none)
@@ -248,11 +248,11 @@ Predicate: iCache_memReqQ.i_notFull && (iCache_cacheState == 3'd3)
 Blocking rules: (none)
  
 Rule: iCache_wait_fill_rule
-Predicate: (iCache_dataArray_serverAdapter_cnt .< 3'd3) &&
+Predicate: (! iCache_hitQ_rv.port0__read[32]) &&
+	   (iCache_dataArray_serverAdapter_cnt .< 3'd3) &&
 	   (iCache_cleanArray_serverAdapter_cnt .< 3'd3) &&
 	   (iCache_tagArray_serverAdapter_cnt .< 3'd3) &&
 	   iCache_memRespQ.i_notEmpty &&
-	   (iCache_cacheReq[64] || (! iCache_hitQ_rv.port0__read[32])) &&
 	   (iCache_cacheState == 3'd4)
 Blocking rules: (none)
  
@@ -406,10 +406,10 @@ Predicate: dCache_tagArray_serverAdapter_outData_beforeDeq.read &&
 		       : dCache_tagArray_serverAdapter_outData_enqw.wget[18:0])
 		  : (_ :: Bit 19))) ==
 	      dCache_requestInfo[29:11]))
-	    ? dCache_cacheReq[64]
-	      ? (dCache_dataArray_serverAdapter_cnt .< 3'd3) &&
-		(dCache_cleanArray_serverAdapter_cnt .< 3'd3)
-	      : (! dCache_hitQ_rv.port0__read[32])
+	    ? (! dCache_hitQ_rv.port0__read[32]) &&
+	      ((! dCache_cacheReq[64]) ||
+	       ((dCache_dataArray_serverAdapter_cnt .< 3'd3) &&
+		(dCache_cleanArray_serverAdapter_cnt .< 3'd3)))
 	    : dCache_cleanArray_serverAdapter_outData_beforeDeq.read) &&
 	   (dCache_cacheState == 3'd1)
 Blocking rules: (none)
@@ -426,11 +426,11 @@ Predicate: dCache_memReqQ.i_notFull && (dCache_cacheState == 3'd3)
 Blocking rules: (none)
  
 Rule: dCache_wait_fill_rule
-Predicate: (dCache_dataArray_serverAdapter_cnt .< 3'd3) &&
+Predicate: (! dCache_hitQ_rv.port0__read[32]) &&
+	   (dCache_dataArray_serverAdapter_cnt .< 3'd3) &&
 	   (dCache_cleanArray_serverAdapter_cnt .< 3'd3) &&
 	   (dCache_tagArray_serverAdapter_cnt .< 3'd3) &&
 	   dCache_memRespQ.i_notEmpty &&
-	   (dCache_cacheReq[64] || (! dCache_hitQ_rv.port0__read[32])) &&
 	   (dCache_cacheState == 3'd4)
 Blocking rules: (none)
  
@@ -439,24 +439,24 @@ Predicate: True
 Blocking rules: (none)
  
 Rule: iCacheToMain
-Predicate: iCache_memReqQ.i_notEmpty && (mainMem_serverAdapterA_cnt .< 3'd3)
+Predicate: iCache_memReqQ.i_notEmpty && (mainMem_serverAdapterB_cnt .< 3'd3)
 Blocking rules: (none)
  
 Rule: mainToICache
-Predicate: mainMem_serverAdapterA_outData_beforeDeq.read &&
-	   (mainMem_serverAdapterA_outData_ff.i_notEmpty ||
-	    mainMem_serverAdapterA_outData_enqw.whas) &&
+Predicate: mainMem_serverAdapterB_outData_beforeDeq.read &&
+	   (mainMem_serverAdapterB_outData_ff.i_notEmpty ||
+	    mainMem_serverAdapterB_outData_enqw.whas) &&
 	   iCache_memRespQ.i_notFull
 Blocking rules: (none)
  
 Rule: dCacheToMain
-Predicate: dCache_memReqQ.i_notEmpty && (mainMem_serverAdapterB_cnt .< 3'd3)
+Predicate: dCache_memReqQ.i_notEmpty && (mainMem_serverAdapterA_cnt .< 3'd3)
 Blocking rules: (none)
  
 Rule: mainToDCache
-Predicate: mainMem_serverAdapterB_outData_beforeDeq.read &&
-	   (mainMem_serverAdapterB_outData_ff.i_notEmpty ||
-	    mainMem_serverAdapterB_outData_enqw.whas) &&
+Predicate: mainMem_serverAdapterA_outData_beforeDeq.read &&
+	   (mainMem_serverAdapterA_outData_ff.i_notEmpty ||
+	    mainMem_serverAdapterA_outData_enqw.whas) &&
 	   dCache_memRespQ.i_notFull
 Blocking rules: (none)
  
@@ -499,7 +499,7 @@ Logical execution order: tic,
 			 mainMem_serverAdapterA_stageReadResponseAlways,
 			 mainMem_serverAdapterA_overRun,
 			 mainMem_serverAdapterA_moveToOutFIFO,
-			 mainToICache,
+			 mainToDCache,
 			 mainMem_serverAdapterA_outData_enqueue,
 			 mainMem_serverAdapterA_outData_dequeue,
 			 mainMem_serverAdapterA_cnt_finalAdd,
@@ -507,7 +507,7 @@ Logical execution order: tic,
 			 mainMem_serverAdapterB_stageReadResponseAlways,
 			 mainMem_serverAdapterB_overRun,
 			 mainMem_serverAdapterB_moveToOutFIFO,
-			 mainToDCache,
+			 mainToICache,
 			 mainMem_serverAdapterB_outData_enqueue,
 			 mainMem_serverAdapterB_outData_dequeue,
 			 mainMem_serverAdapterB_cnt_finalAdd,
