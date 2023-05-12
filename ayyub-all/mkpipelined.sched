@@ -417,6 +417,10 @@ Predicate: imemCache_cleanArray_serverAdapter_s1[1] &&
 	    (! imemCache_cleanArray_serverAdapter_outData_ff.i_notFull))
 Blocking rules: (none)
  
+Rule: imemCache_cycle_count
+Predicate: True
+Blocking rules: (none)
+ 
 Rule: imemCache_assess_rule
 Predicate: imemCache_tagArray_serverAdapter_outData_beforeDeq.read &&
 	   (imemCache_tagArray_serverAdapter_outData_ff.i_notEmpty ||
@@ -590,6 +594,10 @@ Predicate: dmemCache_cleanArray_serverAdapter_s1[1] &&
 	   ((! dmemCache_cleanArray_serverAdapter_outData_beforeEnq.read) ||
 	    (! dmemCache_cleanArray_serverAdapter_outData_beforeDeq.read) ||
 	    (! dmemCache_cleanArray_serverAdapter_outData_ff.i_notFull))
+Blocking rules: (none)
+ 
+Rule: dmemCache_cycle_count
+Predicate: True
 Blocking rules: (none)
  
 Rule: dmemCache_assess_rule
@@ -1322,11 +1330,11 @@ Predicate: d2e.i_notEmpty &&
 			       3'd3))
 			     ? {d2e.first[210:191], 12'b0}
 			     : ((d2e.first[214] &&
-				 ((d2e_first____d2564(...)[214]
-				   ? d2e_first____d2564(...)[213:211]
+				 ((d2e_first____d2568(...)[214]
+				   ? d2e_first____d2568(...)[213:211]
 				   : (_ :: Bit 3)) ==
 				  3'd4))
-				? sext {d2e.first[210], d2e.first[198:191], d2e_first____d2564(...)[199], d2e_first____d2564(...)[209:200], 1'b0}
+				? sext {d2e.first[210], d2e.first[198:191], d2e_first____d2568(...)[199], d2e_first____d2568(...)[209:200], 1'b0}
 				: 32'd0))))))[31:2] ==
 		  30'd1006649341) ||
 		 ((d2e.first[111:80] +
@@ -1355,11 +1363,11 @@ Predicate: d2e.i_notEmpty &&
 			       3'd3))
 			     ? {d2e.first[210:191], 12'b0}
 			     : ((d2e.first[214] &&
-				 ((d2e_first____d2564(...)[214]
-				   ? d2e_first____d2564(...)[213:211]
+				 ((d2e_first____d2568(...)[214]
+				   ? d2e_first____d2568(...)[213:211]
 				   : (_ :: Bit 3)) ==
 				  3'd4))
-				? sext {d2e.first[210], d2e.first[198:191], d2e_first____d2564(...)[199], d2e_first____d2564(...)[209:200], 1'b0}
+				? sext {d2e.first[210], d2e.first[198:191], d2e_first____d2568(...)[199], d2e_first____d2568(...)[209:200], 1'b0}
 				: 32'd0))))))[31:2] ==
 		  30'd1006649342))
 		? ! toMMIO_rv.port0__read[68]
@@ -1908,6 +1916,7 @@ Logical execution order: getIResp,
 			 scoreboard_29_canonicalize,
 			 scoreboard_30_canonicalize,
 			 scoreboard_31_canonicalize,
+			 imemCache_cycle_count,
 			 imemCache_start_miss_rule,
 			 imemCache_send_fill_rule,
 			 imemCache_wait_fill_rule,
@@ -1933,6 +1942,7 @@ Logical execution order: getIResp,
 			 imemCache_cleanArray_serverAdapter_outData_dequeue,
 			 imemCache_cleanArray_serverAdapter_cnt_finalAdd,
 			 imemCache_cleanArray_serverAdapter_s1__dreg_update,
+			 dmemCache_cycle_count,
 			 dmemCache_start_miss_rule,
 			 dmemCache_send_fill_rule,
 			 dmemCache_wait_fill_rule,

@@ -21,9 +21,12 @@ module mkBeveren(Empty);
 
     rule connectCacheDram;
         let lineReq <- cache.getToMem();
+        // $display(fshow(lineReq));
         mainMem.put(lineReq);
     endrule
     rule connectDramCache;
+        // $display("Response from main mem");
+
         let resp <- mainMem.get;
         cache.putFromMem(resp);
     endrule

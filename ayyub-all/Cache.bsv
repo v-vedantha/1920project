@@ -52,7 +52,7 @@ interface Cache;
   
     method Action putFromProc(CacheReq e); // Make request
     method ActionValue#(Word) getToProc(); // Gives processor returned value
-    method Action dequeProc(); // Removes value from processor return queue
+    // method Action dequeProc(); // Removes value from processor return queue
     method ActionValue#(MainMemReq) getToMem(); // Make request to main memory
     method Action putFromMem(MainMemResp e); // Get from main memory
 endinterface
@@ -96,11 +96,11 @@ module mkCache(Cache);
   ReqType reqType = cacheReq.write == 1 ? St : Ld;
 
 
-  // Reg#(Bit#(1000)) cycle <- mkReg(0);
-  // rule cycle_count;
-  //     $display(cacheState); // { Ready, Assess, StartMiss, SendFillReq, WaitFillResp,  FinishProcessStb }
-  //     cycle <= cycle + 1;
-  // endrule
+  Reg#(Bit#(1000)) cycle <- mkReg(0);
+  rule cycle_count;
+      // $display(cacheState); // { Ready, Assess, StartMiss, SendFillReq, WaitFillResp,  FinishProcessStb }
+      cycle <= cycle + 1;
+  endrule
 
   rule assess_rule if (cacheState == Assess);
       // $display("The rule is firing");
@@ -194,7 +194,11 @@ module mkCache(Cache);
   endrule
 
   rule wait_fill_rule if (cacheState == WaitFillResp);
+      // $display("Entered rule");
+  
       MainMemResp resp = memRespQ.first();
+
+      // $display(reqType == Ld ? "Ld" : "St");
 
       tagArray.portA.request.put(BRAMRequest{write: True, // False for read
                                             responseOnWrite: False,
@@ -219,6 +223,8 @@ module mkCache(Cache);
         
         Line newLine = take(resp);
         newLine[requestInfo.blockOffset] = cacheReq.data;
+
+        // resp[requestInfo.blockOffset] = cacheReq.data;
       
         dataArray.portA.request.put(BRAMRequest{write: True, // False for read
                                                 responseOnWrite: False,
@@ -297,12 +303,13 @@ module mkCache(Cache);
   // TODO below
 
   method ActionValue#(Word) getToProc();
-      return hitQ.first();
+    hitQ.deq();  
+    return hitQ.first();
   endmethod
 
-  method Action dequeProc();
-      hitQ.deq();
-  endmethod
+  // method Action dequeProc();
+  //     hitQ.deq();
+  // endmethod
 
   method ActionValue#(MainMemReq) getToMem();
       memReqQ.deq();
