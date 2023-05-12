@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := all
 BUILD_DIR=build
-BINARY_NAME=multicycle top_bsv top_pipelined DelayLine MainMem Beveren
+BINARY_NAME=multicycle top_bsv top_pipelined DelayLine MainMem Beveren Tb
 BSC_FLAGS=--aggressive-conditions --show-schedule -vdir $(BUILD_DIR) -bdir $(BUILD_DIR) -simdir $(BUILD_DIR) -o 
 
 .PHONY: clean all $(BINARY_NAME)
