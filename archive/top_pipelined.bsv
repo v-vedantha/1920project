@@ -26,7 +26,7 @@ module mktop_pipelined(Empty);
         if (debug) $display("Get IReq", fshow(req));
         ireq <= req;
             bram.portB.request.put(BRAMRequestBE{
-                    writeen: req.byte_en,
+                    writeen: req.write,
                     responseOnWrite: True,
                     address: truncate(req.addr >> 2),
                     datain: req.data});
@@ -45,7 +45,7 @@ module mktop_pipelined(Empty);
         dreq <= req;
         if (debug) $display("Get DReq", fshow(req));
         bram.portA.request.put(BRAMRequestBE{
-          writeen: req.byte_en,
+          writeen: req.write,
           responseOnWrite: True,
           address: truncate(req.addr >> 2),
           datain: req.data});
@@ -62,7 +62,7 @@ module mktop_pipelined(Empty);
     rule requestMMIO;
         let req <- rv_core.getMMIOReq;
         if (debug) $display("Get MMIOReq", fshow(req));
-        if (req.byte_en == 'hf) begin
+        if (req.write == 'hf) begin
             if (req.addr == 'hf000_fff4) begin
                 // Write integer to STDERR
                         $fwrite(stderr, "%0d", req.data);
