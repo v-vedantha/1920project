@@ -6,7 +6,7 @@ import MemTypes::*;
 import Cache::*;
 
 function Bit#(1) toWrite(Bit#(4) byte_en);
-    return byte_en == 15 ? 1'b1 : 1'b0;
+    return byte_en == 0 ? 0 : 1;
 endfunction
 
 function Bit#(64) toByteEn(Bit#(1) write);
@@ -17,7 +17,7 @@ module mktop_pipelined(Empty);
     // Instantiate the dual ported memory
     BRAM_Configure cfg = defaultValue();
     cfg.loadFormat = tagged Hex "memlines.vmh";
-    BRAM2PortBE#(LineAddr, PackedLine, 64) mainMem <- mkBRAM2ServerBE(cfg);
+    BRAM2Port#(LineAddr, PackedLine) mainMem <- mkBRAM2Server(cfg);
     // BRAM2PortBE#(Bit#(30), Word, 4) bram <- mkBRAM2ServerBE(cfg);
 
     RVIfc rv_core <- mkpipelined;
@@ -38,16 +38,16 @@ module mktop_pipelined(Empty);
     rule iCacheToMain;
         MainMemReq lineReq <- iCache.getToMem();
 
-        mainMem.portA.request.put(BRAMRequestBE{
-            writeen: toByteEn(lineReq.write),
-            responseOnWrite: True,
-            address: truncate(lineReq.addr >> 6),
+        mainMem.portB.request.put(BRAMRequest{
+            write: lineReq.write == 1,
+            responseOnWrite: False,
+            address: lineReq.addr,
             datain: pack(lineReq.data)});
 
         // mainMem.put(lineReq);
     endrule
     rule mainToICache;
-        let resp <- mainMem.portA.response.get();
+        let resp <- mainMem.portB.response.get();
         MainMemResp line = unpack(resp);
         iCache.putFromMem(line);
     endrule
@@ -55,16 +55,16 @@ module mktop_pipelined(Empty);
     rule dCacheToMain;
         MainMemReq lineReq <- dCache.getToMem();
 
-        mainMem.portB.request.put(BRAMRequestBE{
-            writeen: toByteEn(lineReq.write),
-            responseOnWrite: True,
-            address: truncate(lineReq.addr >> 6),
+        mainMem.portA.request.put(BRAMRequest{
+            write: lineReq.write == 1,
+            responseOnWrite: False,
+            address: lineReq.addr,
             datain: pack(lineReq.data)});
 
         // mainMem.put(lineReq);
     endrule
     rule mainToDCache;
-        let resp <- mainMem.portB.response.get();
+        let resp <- mainMem.portA.response.get();
         MainMemResp line = unpack(resp);
         dCache.putFromMem(line);
     endrule
@@ -90,7 +90,7 @@ module mktop_pipelined(Empty);
         let req = ireq;
         if (debug) $display("Get IResp ", fshow(req), fshow(cacheData));
         req.data = cacheData;
-            rv_core.getIResp(req);
+        rv_core.getIResp(req);
     endrule
 
     // Reads data memory requests from the processor

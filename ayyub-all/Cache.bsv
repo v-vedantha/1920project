@@ -150,6 +150,7 @@ module mkCache(Cache);
                                                     responseOnWrite: False,
                                                     address: requestInfo.lineIndex,
                                                     datain: False});
+            hitQ.enq(0);
           end
 
           cacheState <= Ready;
@@ -235,6 +236,7 @@ module mkCache(Cache);
                                                 responseOnWrite: False,
                                                 address: requestInfo.lineIndex,
                                                 datain: False});
+        hitQ.enq(0);
       end
 
       memRespQ.deq();
