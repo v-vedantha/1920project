@@ -57,7 +57,6 @@ module mkCache(Cache);
   BRAM1Port#( LineIndex, Bool ) cleanArray <- mkBRAM1Server(cfg3);
 
   FIFO#(Word) hitQ <- mkBypassFIFO;
-  // Reg#(MainMemReq) missReq <- mkRegU;
 
   FIFO#(MainMemReq) memReqQ <- mkFIFO;
   FIFO#(MainMemResp) memRespQ <- mkFIFO;
@@ -71,10 +70,6 @@ module mkCache(Cache);
   Reg#(Line) cacheTableLine <- mkRegU;
   Reg#(Word) cacheTableData <- mkRegU;
   Reg#(Bool) cacheTableClean <- mkRegU;
-
-  // FIFOF#(MainMemReq) stb <- mkSizedFIFOF(1);
-
-  // Ehr#(2, Bool) lockCache <- mkEhr(False);
 
 
   ReqType reqType = cacheReq.write == 1 ? St : Ld;
@@ -96,58 +91,43 @@ module mkCache(Cache);
       Word tableData = tableLine[requestInfo.blockOffset];
       Bool tableClean <- cleanArray.portA.response.get();
 
-      // Bool gotFromStb = False;
-      // if (reqType == Ld && stb.notEmpty()) begin
-      //   MainMemReq buf_req = stb.first();
+      Bool isHit = True;
 
-      //   // Check if store buffer val matches
-      //   if (buf_req.addr == cacheReq.addr) begin
-      //     hitQ.enq(buf_req.data);
-      //     gotFromStb = True;
+      if (!isValid(maybeTableTag)) isHit = False;
+      else if (tableTag != requestInfo.tag) isHit = False;
 
-      //     cacheState <= Ready;
-      //   end
-      // end
+      if (isHit) begin
 
-      // if (!gotFromStb) begin
-        Bool isHit = True;
-
-        if (!isValid(maybeTableTag)) isHit = False;
-        else if (tableTag != requestInfo.tag) isHit = False;
-
-        if (isHit) begin
-
-          if (reqType == Ld) begin
-            hitQ.enq(tableData);
-          end
-          else begin
-            
-            Line newLine = take(tableLine);
-            newLine[requestInfo.blockOffset] = cacheReq.data;
-          
-            dataArray.portA.request.put(BRAMRequest{write: True, // False for read
-                                                    responseOnWrite: False,
-                                                    address: requestInfo.lineIndex,
-                                                    datain: newLine});
-
-            cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
-                                                    responseOnWrite: False,
-                                                    address: requestInfo.lineIndex,
-                                                    datain: False});
-            hitQ.enq(0);
-          end
-
-          cacheState <= Ready;
+        if (reqType == Ld) begin
+          hitQ.enq(tableData);
         end
         else begin
-          cacheTableTag <= maybeTableTag;
-          cacheTableLine <= tableLine;
-          cacheTableData <= tableData;
-          cacheTableClean <= tableClean;
+          
+          Line newLine = take(tableLine);
+          newLine[requestInfo.blockOffset] = cacheReq.data;
+        
+          dataArray.portA.request.put(BRAMRequest{write: True, // False for read
+                                                  responseOnWrite: False,
+                                                  address: requestInfo.lineIndex,
+                                                  datain: newLine});
 
-          cacheState <= StartMiss;
+          cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
+                                                  responseOnWrite: False,
+                                                  address: requestInfo.lineIndex,
+                                                  datain: False});
+          hitQ.enq(0);
         end
-      // end
+
+        cacheState <= Ready;
+      end
+      else begin
+        cacheTableTag <= maybeTableTag;
+        cacheTableLine <= tableLine;
+        cacheTableData <= tableData;
+        cacheTableClean <= tableClean;
+
+        cacheState <= StartMiss;
+      end
 
   endrule
 
@@ -183,8 +163,6 @@ module mkCache(Cache);
   
       MainMemResp resp = memRespQ.first();
 
-      // $display(reqType == Ld ? "Ld" : "St");
-
       tagArray.portA.request.put(BRAMRequest{write: True, // False for read
                                             responseOnWrite: False,
                                             address: requestInfo.lineIndex,
@@ -208,8 +186,6 @@ module mkCache(Cache);
         
         Line newLine = take(resp);
         newLine[requestInfo.blockOffset] = cacheReq.data;
-
-        // resp[requestInfo.blockOffset] = cacheReq.data;
       
         dataArray.portA.request.put(BRAMRequest{write: True, // False for read
                                                 responseOnWrite: False,
@@ -228,41 +204,7 @@ module mkCache(Cache);
       cacheState <= Ready;
   endrule
 
-  // rule start_process_stb if (cacheState == Ready && !lockCache[1]);
-  //     MainMemReq buf_req = stb.first();
-  //     AddrInfo ai = extractAddrInfo(buf_req.addr);
-
-  //     tagArray.portA.request.put(BRAMRequest{write: False, // False for read
-  //                                           responseOnWrite: False,
-  //                                           address: ai.lineIndex,
-  //                                           datain: ?});
-      
-  //     dataArray.portA.request.put(BRAMRequest{write: False, // False for read
-  //                                           responseOnWrite: False,
-  //                                           address: ai.lineIndex,
-  //                                           datain: ?});
-      
-  //     cleanArray.portA.request.put(BRAMRequest{write: False, // False for read
-  //                                           responseOnWrite: False,
-  //                                           address: ai.lineIndex,
-  //                                           datain: ?});
-      
-  //     cacheReq <= buf_req;
-  //     requestInfo <= ai;
-
-  //     stb.deq();
-
-  //     cacheState <= Assess;
-  // endrule
-
-  // rule clear_lock;
-  //     lockCache[1] <= False;
-  // endrule
-
   method Action putFromProc(CacheReq e) if (cacheState == Ready);
-      // if (e.write == 1) stb.enq(e);
-      // else lockCache[0] <= True;
-  
       AddrInfo ai = extractAddrInfo(e.addr);
       
       tagArray.portA.request.put(BRAMRequest{write: False, // False for read
@@ -286,16 +228,10 @@ module mkCache(Cache);
       cacheState <= Assess;
   endmethod
 
-  // TODO below
-
   method ActionValue#(Word) getToProc();
     hitQ.deq();  
     return hitQ.first();
   endmethod
-
-  // method Action dequeProc();
-  //     hitQ.deq();
-  // endmethod
 
   method ActionValue#(MainMemReq) getToMem();
       memReqQ.deq();

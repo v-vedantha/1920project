@@ -16,6 +16,7 @@ typedef struct {
                 ReqRes reqres;
                 WhichCache whichcache;
 } CoherencyMessage deriving (Eq, FShow, Bits);
+
 typedef 2 CoreNum;
 typedef Bit#(TLog#(CoreNum)) CoreID;
 
