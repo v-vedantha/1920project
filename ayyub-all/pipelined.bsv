@@ -257,7 +257,7 @@ module mkpipelined(RVIfc);
                 data = rv2 << shift_amount;
                 addr = {addr[31:2], 2'b0};
                 isUnsigned = funct3[2];
-                let type_mem = (dInst.inst[5] == 1) ? byte_en : 0;
+                let type_mem = (dInst.inst[5] == 1) ? 15 : 0;
                 let req = Mem {byte_en : type_mem,
                         addr : addr,
                         data : data};
