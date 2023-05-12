@@ -3,6 +3,7 @@ import MessageFifo::*;
 import MemTypes::*;
 import StmtFSM::*;
 
+import CoherencyTypes::*;
 module mkTb(Empty);
     // Set this to true to see more messages displayed to stdout
     Bool debug = False;

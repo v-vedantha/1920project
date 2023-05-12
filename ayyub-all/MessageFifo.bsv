@@ -4,6 +4,7 @@ import FIFOF::*;
 import MemTypes::*;
 import BRAM::*;
 import Vector::*;
+import CoherencyTypes::*;
 
 typedef struct{
     CoreID            child;
