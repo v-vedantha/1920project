@@ -5,6 +5,7 @@ import FIFO::*;
 import SpecialFIFOs::*;
 import DelayLine::*;
 import MemTypes::*;
+import CoherencyTypes::*;
 import Cache::*;
 
 typedef Bit#(512) PackedLine;
@@ -17,7 +18,7 @@ interface MainMem;
 endinterface
 
 typedef struct {
-    Bool Valid;
+    Bool valid;
     Vector#(2, MSI) msis;
     Vector#(2, Bool) waitc;
 } DirData deriving(Bits, Eq, FShow);

@@ -6,19 +6,6 @@ import SpecialFIFOs::*;
 import Ehr::*;
 import MemTypes::*;
 
-Integer addrSize = 32;
-
-Integer numCacheLines = 128;
-Integer numWordsPerLine = 16;
-
-Integer numBlockBits = 4; // log2(16);
-Integer numCacheLineBits = 7; // log2(128)
-Integer numTagBits = 19; // 32 - 7 - 4 - 2;
-
-typedef Bit#(4) BlockOffset;
-typedef Bit#(7) LineIndex;
-typedef Bit#(19) CacheTag;
-
 typedef enum { Ready, Assess, StartMiss, SendFillReq, WaitFillResp,  FinishProcessStb } CacheState deriving (Eq, FShow, Bits);
 typedef enum { Ld, St } ReqType deriving (Eq, FShow, Bits);
 
@@ -31,9 +18,9 @@ typedef struct {
 function AddrInfo extractAddrInfo (CacheAddr addr);
 
     Integer end_multiple = 1;
-    Integer end_block_offset = numBlockBits - 1 + (end_multiple + 1);
-    Integer end_cache_line = numCacheLineBits - 1 + (end_block_offset + 1);
-    Integer end_tag = numTagBits - 1 + (end_cache_line + 1);
+    Integer end_block_offset = valueOf(NumBlockBits) - 1 + (end_multiple + 1);
+    Integer end_cache_line = valueOf(NumCacheLineBits) - 1 + (end_block_offset + 1);
+    Integer end_tag = valueOf(NumTagBits) - 1 + (end_cache_line + 1);
 
     BlockOffset bo = addr[end_block_offset : 2];
     LineIndex li = addr[end_cache_line : end_block_offset + 1];
@@ -42,9 +29,6 @@ function AddrInfo extractAddrInfo (CacheAddr addr);
     AddrInfo info = AddrInfo { tag: ct, lineIndex: li, blockOffset: bo };
     return info;
 endfunction
-
-
-
 
 
 interface Cache;
@@ -64,13 +48,13 @@ module mkCache(Cache);
 
 
   BRAM_Configure cfg = defaultValue;
-  BRAM1Port#( Bit#(7), Maybe#(CacheTag) ) tagArray <- mkBRAM1Server(cfg);
+  BRAM1Port#( LineIndex, Maybe#(CacheTag) ) tagArray <- mkBRAM1Server(cfg);
 
   BRAM_Configure cfg2 = defaultValue;
-  BRAM1Port#( Bit#(7), Line ) dataArray <- mkBRAM1Server(cfg2);
+  BRAM1Port#( LineIndex, Line ) dataArray <- mkBRAM1Server(cfg2);
 
   BRAM_Configure cfg3 = defaultValue;
-  BRAM1Port#( Bit#(7), Bool ) cleanArray <- mkBRAM1Server(cfg3);
+  BRAM1Port#( LineIndex, Bool ) cleanArray <- mkBRAM1Server(cfg3);
 
   FIFO#(Word) hitQ <- mkBypassFIFO;
   // Reg#(MainMemReq) missReq <- mkRegU;

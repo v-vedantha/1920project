@@ -1,11 +1,35 @@
 import Vector::*;
 
-typedef Bit#(32) Word;
-typedef Vector#(16, Word) Line;
-typedef Bit#(512) PackedLine;
 
-typedef Bit#(32) CacheAddr;
-typedef Bit#(26) LineAddr; // 32 - 4 (block) - 2 (multiple of 4)
+typedef 32 WordSize;
+typedef 32 AddrSize;
+typedef 128 NumCacheLines;
+typedef 16 NumWordsPerLine;
+
+
+
+typedef Bit#(WordSize) Word;
+
+typedef TLog#(NumWordsPerLine) NumBlockBits;
+typedef TLog#(NumCacheLines) NumCacheLineBits;
+
+typedef TSub#(TSub#(TSub#(AddrSize, NumCacheLineBits), NumBlockBits), 2) NumTagBits;
+
+typedef Bit#(NumBlockBits) BlockOffset;
+typedef Bit#(NumCacheLineBits) LineIndex;
+typedef Bit#(NumTagBits) CacheTag;
+
+typedef Vector#(NumWordsPerLine, Word) Line;
+
+typedef TMul#(WordSize, NumWordsPerLine) NumPackedLineBits;
+typedef Bit#(NumPackedLineBits) PackedLine;
+
+typedef Bit#(AddrSize) CacheAddr;
+
+typedef TAdd#(NumTagBits, NumCacheLineBits) NumLineAddrBits;
+typedef Bit#(NumLineAddrBits) LineAddr;
+
+
 
 typedef struct { 
                 Bit#(1) write;
@@ -19,36 +43,3 @@ typedef struct {
                } MainMemReq deriving (Eq, FShow, Bits, Bounded);
 
 typedef Line MainMemResp;
-typedef struct { 
-                Bit#(1) write;
-                CacheAddr addr;
-                Word data;
-               } CacheReq deriving (Eq, FShow, Bits, Bounded);
-typedef struct { 
-                Bit#(1) write;
-                LineAddr addr;
-                Line data;
-               } MainMemReq deriving (Eq, FShow, Bits, Bounded);
-
-
-typedef Bit#(512) CWord;
-
-typedef Bit#(32) Word;
-
-typedef enum {
-	M, S, I
-} MSI deriving (Eq, FShow, Bits);
-
-typedef enum {
-	Request, Response
-} ReqRes deriving (Eq, FShow, Bits);
-
-typedef Bit#(1) WhichCache;
-
-typedef struct {
-                Vector#(16, Word) data;
-                LineAddr addr;
-                MSI msi;
-                ReqRes reqres;
-                WhichCache whichcache;
-} CoherencyMessage deriving (Eq, FShow, Bits);
