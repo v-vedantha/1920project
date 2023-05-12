@@ -4,7 +4,7 @@ import MemTypes::*;
 import StmtFSM::*;
 
 import CoherencyTypes::*;
-module mkTb(Empty);
+module mkMessageFifoTest(Empty);
     // Set this to true to see more messages displayed to stdout
     Bool debug = False;
 
