@@ -20,6 +20,25 @@ typedef struct {
 typedef 2 CoreNum;
 typedef Bit#(TLog#(CoreNum)) CoreID;
 
+
+typedef struct{
+    CoreID            child;
+    CacheAddr              addr;
+    MSI               state;
+    Maybe#(Line) data;
+} CacheMemResp deriving(Eq, Bits, FShow);
+typedef struct{
+    CoreID      child;
+    CacheAddr        addr;
+    MSI         state;
+} CacheMemReq deriving(Eq, Bits, FShow);
+typedef union tagged {
+    CacheMemReq     Req;
+    CacheMemResp    Resp;
+} CacheMemMessage deriving(Eq, Bits, FShow);
+
+
+
 instance Ord#(MSI);
     function Bool \< ( MSI x, MSI y );
         let c = compare(x,y);

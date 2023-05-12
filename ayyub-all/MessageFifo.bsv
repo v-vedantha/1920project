@@ -6,22 +6,6 @@ import BRAM::*;
 import Vector::*;
 import CoherencyTypes::*;
 
-typedef struct{
-    CoreID            child;
-    CacheAddr              addr;
-    MSI               state;
-    Maybe#(Line) data;
-} CacheMemResp deriving(Eq, Bits, FShow);
-typedef struct{
-    CoreID      child;
-    CacheAddr        addr;
-    MSI         state;
-} CacheMemReq deriving(Eq, Bits, FShow);
-typedef union tagged {
-    CacheMemReq     Req;
-    CacheMemResp    Resp;
-} CacheMemMessage deriving(Eq, Bits, FShow);
-
 interface MessageFifo#(numeric type n);
   method Action enq_resp(CacheMemResp d);
   method Action enq_req(CacheMemReq d);
@@ -31,7 +15,6 @@ interface MessageFifo#(numeric type n);
   method CacheMemMessage first;
   method Action deq;
 endinterface
-
 
 module mkMessageFifo(MessageFifo#(n));
 
