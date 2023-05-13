@@ -86,3 +86,17 @@ instance Ord#(MSI);
         end
     endfunction
 endinstance
+// Wide memory interface
+// This is defined here since it depends on the CacheLine type
+typedef struct{
+    Bit#(NumPackedLineBits) write_en;  // Word write enable
+    CacheAddr                 addr;
+    Line            data;      // Vector#(CacheLineWords, Data)
+} WideMemReq deriving(Eq,Bits,FShow);
+
+typedef Line WideMemResp;
+interface WideMem;
+    method Action req(WideMemReq r);
+    method ActionValue#(Line) resp;
+	method Bool respValid;
+endinterface

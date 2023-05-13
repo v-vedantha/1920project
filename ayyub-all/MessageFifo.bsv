@@ -56,7 +56,7 @@ module mkMessageFifo(MessageFifo#(n));
         if (responses.notEmpty) begin
             responses.deq();
         end
-        else begin
+        else if (requests.notEmpty) begin
             requests.deq();
         end
     endmethod
