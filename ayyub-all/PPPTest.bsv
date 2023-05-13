@@ -2,18 +2,22 @@ import RegFile::*;
 import StmtFSM::*;
 import Vector::*;
 
-import Fifo::*;
+import FIFO::*;
+import FIFOF::*;
 import MemTypes::*;
+import SpecialFIFOs::*;
 import MessageFifo::*;
 import MessageRouter::*;
 import CoherencyTypes::*;
 import PPP::*;
-
+function LineAddr getLineAddr(CacheAddr a);
+	return truncateLSB(a);
+endfunction
 // Dummy WideMem module for testing, only has address 0
 // init mem value is 0
 module mkWideMemRegFile(WideMem);
-    Reg#(CacheLine) rf <- mkReg(unpack(0));
-    Fifo#(2, CacheLine) respQ <- mkCFFifo;
+    Reg#(Line) rf <- mkReg(unpack(0));
+    FIFOF#(Line) respQ <- mkFIFOF;
 
     method Action req(WideMemReq r);
         // All the requests in this program are to address 0, so if this is a request to some other address, throw an error
@@ -22,8 +26,10 @@ module mkWideMemRegFile(WideMem);
             $finish;
         end
         if( r.write_en == 0 ) begin
+            $display("Accepted read request to address 0", rf);
             respQ.enq(rf);
         end else if( r.write_en == maxBound ) begin
+            $display("Accepted write request to address 0", r.data);
             rf <= r.data;
         end else begin
             // This shouldn't be used
@@ -31,7 +37,8 @@ module mkWideMemRegFile(WideMem);
             $finish;
         end
     endmethod
-    method ActionValue#(CacheLine) resp;
+    method ActionValue#(Line) resp;
+        $display("responding with a" , respQ.first);
         respQ.deq;
         return respQ.first;
     endmethod
@@ -40,7 +47,7 @@ endmodule
 
 // This tests the cache hierarchy parent with requests and responses for a single address
 (* synthesize *)
-module mkTb(Empty);
+module mkPPPTest(Empty);
     // Set this to true to see more messages displayed to stdout
     Bool debug = False;
 
@@ -62,7 +69,7 @@ module mkTb(Empty);
         return CacheMemReq{ child: child, addr: 0, state: y };
     endfunction
 
-    function CacheMemResp c2p_downgradeToY(CoreID child, MSI y, Maybe#(CacheLine) d);
+    function CacheMemResp c2p_downgradeToY(CoreID child, MSI y, Maybe#(Line) d);
         return CacheMemResp{ child: child, addr: 0, state: y, data: d };
     endfunction
 
@@ -70,7 +77,7 @@ module mkTb(Empty);
         return CacheMemReq{ child: child, addr: 0, state: y };
     endfunction
 
-    function CacheMemResp p2c_upgradeToY(CoreID child, MSI y, Maybe#(CacheLine) d);
+    function CacheMemResp p2c_upgradeToY(CoreID child, MSI y, Maybe#(Line) d);
         return CacheMemResp{ child: child, addr: 0, state: y, data: d };
     endfunction
 

@@ -70,18 +70,37 @@ endfunction
 
 module mkPPP(MessageGet c2m, MessagePut m2c, WideMem mem, Empty ifc);
     Vector#(CoreNum, Vector#(CacheRows, Reg#(DirData))) childState <- replicateM(replicateM(mkReg(DirData{msi: I, waitc: False, tag: ?})));
-
-    rule respond if (c2m.hasReq);
+    Reg#(CacheMemReq) currentReq <- mkReg(CacheMemReq{child: 0, addr: 0, state: I});
+    Reg#(Bool) busy <- mkReg(False);
+    
+    rule respond if (c2m.hasReq && !busy);
         CacheMemReq req = c2m.first().Req;
+        currentReq <= req;
         let slot = getSlot(req.addr);
         let statea = childState[req.child][slot];
 
         if (isOkToRespond(childState, req)) begin
-            let d = (statea.msi == I) ? statea.data : ?; // Where the req to mem should happen
-            m2c.enq_resp(CacheMemResp{child: req.child, addr: req.addr, state: req.state, data: d});
-            statea.msi <= req.state;
+            busy <= True;
+            $display("Reading from memory");
+            mem.req(WideMemReq{
+                write_en: fromInteger(0),
+                addr: req.addr,
+                data: ?
+            });
             c2m.deq;
         end
+    endrule
+
+    rule respond2 if (busy);
+        busy <= False;
+        Line data <- mem.resp();
+        CacheMemReq req = currentReq;
+        let slot = getSlot(req.addr);
+        let statea = childState[req.child][slot];
+        let d = (statea.msi == I) ? tagged Valid (data) : tagged Invalid;
+        m2c.enq_resp(CacheMemResp{child: req.child, addr: req.addr, state: req.state, data: d});
+        childState[req.child][slot].msi <= req.state;
+        // statea.msi <= req.state;
     endrule
 
     rule downgrade if (c2m.hasReq);
@@ -100,13 +119,25 @@ module mkPPP(MessageGet c2m, MessagePut m2c, WideMem mem, Empty ifc);
 
     rule recvResponse if (c2m.hasResp);
         CacheMemResp resp = c2m.first().Resp;
+        c2m.deq;
         let slot = getSlot(resp.addr);
         let statea = childState[resp.child][slot];
-        if (statea.msi == M)
-            statea.data <= resp.data; // Where the mem should be written to
+        if (statea.msi == M) begin
+            $display("Wrote to memory");
+            mem.req(WideMemReq{
+                write_en: signExtend(1'b1),
+                addr: resp.addr,
+                data: resp.data.Valid
+            });
+        end
 
-        childState[resp.child][slot].waitc <= False;
-        childState[resp.child][slot].msi <= resp.state;
+        // childState[resp.child][slot].waitc <= False;
+        childState[resp.child][slot] <= DirData{
+            msi: resp.state,
+            waitc: False,
+            tag: childState[resp.child][slot].tag
+        };
+        // }.msi <= resp.state;
     endrule
 
 endmodule
