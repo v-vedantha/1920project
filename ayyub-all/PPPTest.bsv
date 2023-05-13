@@ -26,10 +26,8 @@ module mkWideMemRegFile(WideMem);
             $finish;
         end
         if( r.write_en == 0 ) begin
-            $display("Accepted read request to address 0", rf);
             respQ.enq(rf);
         end else if( r.write_en == maxBound ) begin
-            $display("Accepted write request to address 0", r.data);
             rf <= r.data;
         end else begin
             // This shouldn't be used
@@ -38,7 +36,6 @@ module mkWideMemRegFile(WideMem);
         end
     endmethod
     method ActionValue#(Line) resp;
-        $display("responding with a" , respQ.first);
         respQ.deq;
         return respQ.first;
     endmethod
@@ -49,7 +46,7 @@ endmodule
 (* synthesize *)
 module mkPPPTest(Empty);
     // Set this to true to see more messages displayed to stdout
-    Bool debug = True;
+    Bool debug = False;
 
     MessageFifo#(2) c2pQ <- mkMessageFifo;
     MessageFifo#(2) p2cQ <- mkMessageFifo;
