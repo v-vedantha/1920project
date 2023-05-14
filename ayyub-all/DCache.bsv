@@ -9,30 +9,22 @@ import MessageRouter::*;
 import MessageFifo::*;
 import CoherencyTypes::*;
 
+typedef 32 InstSz;
+typedef Bit#(InstSz) Instruction;
+interface RefIMem;
+	method Action fetch(CacheAddr pc, Instruction inst);
+endinterface
+
+interface RefDMem;
+	method Action issue(MemReq req);
+	method Action commit(MemReq req, Maybe#(Line) line, Maybe#(MemResp) resp);
+	// line is the original cache line (before write is done)
+	// set it to invalid if you don't want to check the value 
+	// or you don't know the value (e.g. when you bypass from stq or when store-cond fail)
+endinterface
 typedef enum { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp} CacheState deriving (Eq, FShow, Bits);
 typedef enum { DowngradeStart, DowngradeFinish} DowngradeState deriving (Eq, FShow, Bits);
 // typedef enum { Ld, St } ReqType deriving (Eq, FShow, Bits);
-
-typedef struct {
-    CacheTag tag;
-    LineIndex lineIndex;
-    BlockOffset blockOffset;
-} AddrInfo deriving (Eq, FShow, Bits, Bounded);
-
-function AddrInfo extractAddrInfo (CacheAddr addr);
-
-    Integer end_multiple = 1;
-    Integer end_block_offset = valueOf(NumBlockBits) - 1 + (end_multiple + 1);
-    Integer end_cache_line = valueOf(NumCacheLineBits) - 1 + (end_block_offset + 1);
-    Integer end_tag = valueOf(NumTagBits) - 1 + (end_cache_line + 1);
-
-    BlockOffset bo = addr[end_block_offset : 2];
-    LineIndex li = addr[end_cache_line : end_block_offset + 1];
-    CacheTag ct = addr[end_tag : end_cache_line + 1];
-    
-    AddrInfo info = AddrInfo { tag: ct, lineIndex: li, blockOffset: bo };
-    return info;
-endfunction
 
 
 // interface Cache;
@@ -79,7 +71,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
 
 
-  Reg#(CacheReq) cacheReq <- mkRegU;
+  Reg#(MemReq) cacheReq <- mkRegU;
   Reg#(AddrInfo) requestInfo <- mkRegU;
 
   Reg#(Maybe#(CacheTag)) cacheTableTag <- mkRegU;
@@ -92,7 +84,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
 
   // ReqType reqType = cacheReq.write == 1 ? St : Ld;
-  MemOp reqType = cacheReq.write == 1 ? St : Ld;
+  MemOp reqType = cacheReq.op;
 
 
   Reg#(Bit#(1000)) cycle <- mkReg(0);
@@ -137,6 +129,10 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
                                                     responseOnWrite: False,
                                                     address: requestInfo.lineIndex,
                                                     datain: newLine});
+
+            $display("Assess rule just wrote to data");
+            $display(fshow(newLine));
+
 
             // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
             //                                         responseOnWrite: False,
@@ -183,7 +179,8 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
         CacheTag tableTag = fromMaybe(?, cacheTableTag);
         LineAddr la = {tableTag, requestInfo.lineIndex};
 
-        CacheMemResp writeback_resp = CacheMemResp{ child: id, addr: zeroExtend(la), state: I, data: tagged Valid(cacheTableLine) };
+        CacheMemResp writeback_resp = CacheMemResp{ child: id, addr: la, state: I, data: tagged Valid(cacheTableLine) };
+        $display("Response type 1");
         toMem.enq_resp(writeback_resp);
 
         // MainMemReq writeback_req = MainMemReq { write: 1'b1, addr: la, data: cacheTableLine };
@@ -211,8 +208,9 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
       // } CacheMemReq
 
       MSI new_state = (reqType == Ld) ? S : M;
-      CacheMemReq missing_line_req = CacheMemReq{ child: id, addr: zeroExtend(la), state: new_state };
+      CacheMemReq missing_line_req = CacheMemReq{ child: id, addr: la, state: new_state };
       toMem.enq_req(missing_line_req);
+      $display("Requesting address ", fshow(missing_line_req));
 
       cacheState <= WaitFillResp;
   endrule
@@ -223,6 +221,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
       // MainMemResp resp = memRespQ.first();
 
       CacheMemResp resp = fromMem.first().Resp;
+      $display("Response is ", fshow(resp));
       Line resp_line = fromMaybe(?, resp.data);
 
       tagArray.portA.request.put(BRAMRequest{write: True, // False for read
@@ -237,6 +236,9 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
                                                   responseOnWrite: False,
                                                   address: requestInfo.lineIndex,
                                                   datain: resp_line});
+        
+        $display("Wait fill rule on load just wrote to data");
+        $display(fshow(resp_line));
 
         // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
         //                                         responseOnWrite: False,
@@ -244,7 +246,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
         //                                         datain: True});
 
         Word respData = resp_line[requestInfo.blockOffset];
-        finalRespData <= respData
+        finalRespData <= respData;
         // hitQ.enq(respData);
       end
       else begin
@@ -256,6 +258,12 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
                                                 responseOnWrite: False,
                                                 address: requestInfo.lineIndex,
                                                 datain: newLine});
+        
+        $display("Wait fill rule on store just wrote to data");
+        $display(fshow(resp_line));
+        $display(fshow(cacheReq.data));
+        $display(fshow(newLine));
+        
 
         // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
         //                                         responseOnWrite: False,
@@ -268,12 +276,11 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
       
       fromMem.deq();
 
-      finalRespLine <= resp_line;
       cacheState <= FinalResp;
   endrule
 
   rule final_resp_rule if (cacheState == FinalResp);
-    hitQ.enq(reqType == Ld ? final_resp_rule : 0);
+    hitQ.enq(reqType == Ld ? finalRespData : 0);
     cacheState <= Ready;
   endrule
 
@@ -284,18 +291,20 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
     CacheMemReq req = fromMem.first().Req;
     fromMem.deq();
     
-    AddrInfo ai = extractAddrInfo(req.addr);
-    MSI currentState = cacheMSIs[ai.lineIndex];
+    LineIndex li = req.addr[valueOf(NumCacheLineBits) - 1 : 0];
+    // AddrInfo ai = extractAddrInfo(req.addr);
+    MSI currentState = cacheMSIs[li];
     
-    if (currentState > req.msi) begin
+    if (currentState > req.state) begin
       if (currentState == M) begin
         dataArray.portB.request.put(BRAMRequest{write: False, // False for read
                                               responseOnWrite: False,
-                                              address: ai.lineIndex,
+                                              address: li,
                                               datain: ?});
         downgradeState <= DowngradeFinish;
       end else begin
-        toMem.enq_resp(CacheMemResp{ child: id, addr: req.addr, state: req.msi, data: Invalid});
+        $display("Response type 2");
+        toMem.enq_resp(CacheMemResp{ child: id, addr: req.addr, state: req.state, data: Invalid});
       end
     end
 
@@ -304,11 +313,13 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
   rule downgrade_end_rule if (cacheState != FinalResp &&
                               downgradeState == DowngradeFinish);
-    Line data = dataArray.portB.response.get();
-    AddrInfo ai = extractAddrInfo(downgradeReq.addr);
-    cacheMSIs[ai.lineIndex] <= downgradeReq.msi;
+    Line data <- dataArray.portB.response.get();
+    // AddrInfo ai = extractAddrInfo(downgradeReq.addr);
+    LineIndex li = downgradeReq.addr[valueOf(NumCacheLineBits) - 1 : 0];
+    cacheMSIs[li] <= downgradeReq.state;
 
-    toMem.enq_resp(CacheMemResp{ child: id, addr: req.addr, state: downgradeReq.msi, data: tagged Valid(data) });
+    $display("Response type 3");
+    toMem.enq_resp(CacheMemResp{ child: id, addr: downgradeReq.addr, state: downgradeReq.state, data: tagged Valid(data) });
   endrule
 
   method Action req(MemReq r);
@@ -325,10 +336,10 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
                                             address: ai.lineIndex,
                                             datain: ?});
       
-      cleanArray.portA.request.put(BRAMRequest{write: False, // False for read
-                                            responseOnWrite: False,
-                                            address: ai.lineIndex,
-                                            datain: ?});
+      // cleanArray.portA.request.put(BRAMRequest{write: False, // False for read
+      //                                       responseOnWrite: False,
+      //                                       address: ai.lineIndex,
+      //                                       datain: ?});
       
       cacheReq <= r;
       requestInfo <= ai;

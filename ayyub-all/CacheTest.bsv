@@ -2,29 +2,14 @@ import StmtFSM::*;
 import Vector::*;
 import GetPut::*;
 
-import Types::*;
 import MemTypes::*;
 import CoherencyTypes::*;
-import RefTypes::*;
-import RefDummyMem::*;
+// import RefTypes::*;
+// import RefDummyMem::*;
 import MessageFifo::*;
 import MessageRouter::*;
 import DCache::*;
 
-typedef 32 InstSz;
-typedef Bit#(InstSz) Instruction;
-
-interface RefIMem;
-	method Action fetch(CacheAddr pc, Instruction inst);
-endinterface
-
-interface RefDMem;
-	method Action issue(MemReq req);
-	method Action commit(MemReq req, Maybe#(CacheLine) line, Maybe#(MemResp) resp);
-	// line is the original cache line (before write is done)
-	// set it to invalid if you don't want to check the value 
-	// or you don't know the value (e.g. when you bypass from stq or when store-cond fail)
-endinterface
 
 interface RefMem;
 	interface Vector#(CoreNum, RefIMem) iMem;
@@ -35,7 +20,7 @@ module mkRefDummyMem(RefMem);
 	Vector#(CoreNum, RefDMem) dVec = ?;
 	for(Integer i = 0; i < valueOf(CoreNum); i = i+1) begin
 		iVec[i] = (interface RefIMem;
-			method Action fetch(Addr pc, Instruction inst);
+			method Action fetch(CacheAddr pc, Instruction inst);
 				noAction;
 			endmethod
 		endinterface);
@@ -43,7 +28,7 @@ module mkRefDummyMem(RefMem);
 			method Action issue(MemReq req);
 				noAction;
 			endmethod
-			method Action commit(MemReq req, Maybe#(CacheLine) line, Maybe#(MemResp) resp);
+			method Action commit(MemReq req, Maybe#(Line) line, Maybe#(MemResp) resp);
 				noAction;
 			endmethod
 		endinterface);
@@ -52,6 +37,13 @@ module mkRefDummyMem(RefMem);
 	interface iMem = iVec;
 	interface dMem = dVec;
 endmodule
+
+
+function LineAddr getLineAddr(CacheAddr a);
+	AddrInfo ai = extractAddrInfo(a);
+	LineAddr la = { ai.tag, ai.lineIndex };
+	return la;
+endfunction
 
 
 (* synthesize *)
@@ -70,24 +62,24 @@ module mkCacheTest(Empty);
 	let p2c = toMessagePut(p2cQ);
 	let c2p = toMessageGet(c2pQ);
 
-    function Addr address( CacheTag tag, CacheIndex index, CacheWordSelect sel );
+    function CacheAddr address( CacheTag tag, LineIndex index, BlockOffset sel );
         return {tag, index, sel, 0};
     endfunction
 
-    function CacheMemReq c2p_upgradeToY(Addr a, MSI y);
-        return CacheMemReq{ child: 0, addr: a, state: y };
+    function CacheMemReq c2p_upgradeToY(CacheAddr a, MSI y);
+        return CacheMemReq{ child: 0, addr: getLineAddr(a), state: y };
     endfunction
 
-    function CacheMemResp c2p_downgradeToY(Addr a, MSI y, Maybe#(CacheLine) d);
-        return CacheMemResp{ child: 0, addr: a, state: y, data: d };
+    function CacheMemResp c2p_downgradeToY(CacheAddr a, MSI y, Maybe#(Line) d);
+        return CacheMemResp{ child: 0, addr: getLineAddr(a), state: y, data: d };
     endfunction
 
-    function CacheMemReq p2c_downgradeToY(Addr a, MSI y);
-        return CacheMemReq{ child: 0, addr: a, state: y };
+    function CacheMemReq p2c_downgradeToY(CacheAddr a, MSI y);
+        return CacheMemReq{ child: 0, addr: getLineAddr(a), state: y };
     endfunction
 
-    function CacheMemResp p2c_upgradeToY(Addr a, MSI y, Maybe#(CacheLine) d);
-        return CacheMemResp{ child: 0, addr: a, state: y, data: d };
+    function CacheMemResp p2c_upgradeToY(CacheAddr a, MSI y, Maybe#(Line) d);
+        return CacheMemResp{ child: 0, addr: getLineAddr(a), state: y, data: d };
     endfunction
 
     function Action getResp( MemResp data );
@@ -103,13 +95,13 @@ module mkCacheTest(Empty);
 		endaction);
     endfunction
 
-    function Action reqLd( Addr a, MemReqID rid );
+    function Action reqLd( CacheAddr a, MemReqID rid );
         return (action
 			cache.req( MemReq{ addr: a, data: ?, op: Ld, rid: rid } );
 		endaction);
     endfunction
 
-    function Action reqSt( Addr a, Data d, MemReqID rid );
+    function Action reqSt( CacheAddr a, Word d, MemReqID rid );
         return (action
 			cache.req( MemReq{ addr: a, data: d, op: St, rid: rid } );
 		endaction);
@@ -126,7 +118,7 @@ module mkCacheTest(Empty);
 						tagged Req .ireq: begin
 							if( req.child == ireq.child && 
 								req.state == ireq.state &&
-								getLineAddr(req.addr) == getLineAddr(ireq.addr) ) begin
+								req.addr == ireq.addr ) begin
 								// match
 								c2p.deq;
 							end else begin
@@ -154,7 +146,7 @@ module mkCacheTest(Empty);
 						tagged Resp .iresp: begin
 							if( resp.child == iresp.child && 
 								resp.state == iresp.state &&
-								getLineAddr(resp.addr) == getLineAddr(iresp.addr) &&
+								resp.addr == iresp.addr &&
 								resp.data == iresp.data ) begin
 								// match
 								c2p.deq;
