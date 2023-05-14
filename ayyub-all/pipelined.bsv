@@ -10,12 +10,12 @@ import Ehr::*;
 typedef struct { Bit#(4) byte_en; Bit#(32) addr; Bit#(32) data; } Mem deriving (Eq, FShow, Bits);
 
 interface RVIfc;
-    method ActionValue#(Mem) getIReq();
-    method Action getIResp(Mem a);
-    method ActionValue#(Mem) getDReq();
-    method Action getDResp(Mem a);
-    method ActionValue#(Mem) getMMIOReq();
-    method Action getMMIOResp(Mem a);
+    method ActionValue#(MemReq) getIReq();
+    method Action getIResp(MemResp a);
+    method ActionValue#(MemReq) getDReq();
+    method Action getDResp(MemResp a);
+    method ActionValue#(MemReq) getMMIOReq();
+    method Action getMMIOResp(MemResp a);
 endinterface
 typedef struct { Bool isUnsigned; Bit#(2) size; Bit#(2) offset; Bool mmio; } MemBusiness deriving (Eq, FShow, Bits);
 
@@ -59,12 +59,12 @@ module mkpipelined(RVIfc);
     Bool debug = False;
     
     // Interface with memory and devices
-    FIFO#(Mem) toImem <- mkBypassFIFO;
-    FIFO#(Mem) fromImem <- mkBypassFIFO;
-    FIFO#(Mem) toDmem <- mkBypassFIFO;
-    FIFO#(Mem) fromDmem <- mkBypassFIFO;
-    FIFO#(Mem) toMMIO <- mkBypassFIFO;
-    FIFO#(Mem) fromMMIO <- mkBypassFIFO;
+    FIFO#(MemReq) toImem <- mkBypassFIFO;
+    FIFO#(MemResp) fromImem <- mkBypassFIFO;
+    FIFO#(MemReq) toDmem <- mkBypassFIFO;
+    FIFO#(MemResp) fromDmem <- mkBypassFIFO;
+    FIFO#(MemReq) toMMIO <- mkBypassFIFO;
+    FIFO#(MemResp) fromMMIO <- mkBypassFIFO;
 
     FIFO#(F2D) f2d <- mkFIFO;
     FIFO#(D2E) d2e <- mkFIFO;
@@ -121,10 +121,16 @@ module mkpipelined(RVIfc);
 
             
             // current_id <= iid;
-            let req = Mem {
-                byte_en : 0,
+            // let req = Mem {
+            //     byte_en : 0,
+            //     addr : pc[1],
+            //     data : 0
+            // };
+            let req = MemReq {
+                op: Ld,
                 addr : pc[1],
-                data : 0
+                data : ?,
+                rid : ?
             };
 
             toImem.enq(req);
@@ -153,8 +159,9 @@ module mkpipelined(RVIfc);
 
         F2D fetchInfo = f2d.first();
 
-        let resp = fromImem.first();
-        let instr = resp.data;
+        // let resp = fromImem.first();
+        // let instr = resp.data;
+        Word instr = fromImem.first();
         let decodedInst = decodeInst(instr);
 
 		
@@ -257,10 +264,11 @@ module mkpipelined(RVIfc);
                 data = rv2 << shift_amount;
                 addr = {addr[31:2], 2'b0};
                 isUnsigned = funct3[2];
-                let type_mem = (dInst.inst[5] == 1) ? 15 : 0;
-                let req = Mem {byte_en : type_mem,
+                let type_mem = (dInst.inst[5] == 1) ? St : Ld;
+                let req = MemReq {op : type_mem,
                         addr : addr,
-                        data : data};
+                        data : data,
+                        rid: ?};
                 if (isMMIO(addr)) begin 
                     if (debug) $display("Cycle: %d | %x | [Execute] MMIO", cycle, decodeInfo.pc, fshow(req));
                     toMMIO.enq(req);
@@ -393,7 +401,7 @@ module mkpipelined(RVIfc);
                 resp = fromDmem.first();
 		        fromDmem.deq();
 		    end
-            let mem_data = resp.data;
+            let mem_data = resp;
             mem_data = mem_data >> {mem_business.offset ,3'b0};
             case ({pack(mem_business.isUnsigned), mem_business.size}) matches
 	     	3'b000 : data = signExtend(mem_data[7:0]);
@@ -455,25 +463,25 @@ module mkpipelined(RVIfc);
 		    squashKonata(lfh, f);
 	endrule
 		
-    method ActionValue#(Mem) getIReq();
+    method ActionValue#(MemReq) getIReq();
 		toImem.deq();
 		return toImem.first();
     endmethod
-    method Action getIResp(Mem a);
+    method Action getIResp(MemResp a);
     	fromImem.enq(a);
     endmethod
-    method ActionValue#(Mem) getDReq();
+    method ActionValue#(MemReq) getDReq();
 		toDmem.deq();
 		return toDmem.first();
     endmethod
-    method Action getDResp(Mem a);
+    method Action getDResp(MemResp a);
 		fromDmem.enq(a);
     endmethod
-    method ActionValue#(Mem) getMMIOReq();
+    method ActionValue#(MemReq) getMMIOReq();
 		toMMIO.deq();
 		return toMMIO.first();
     endmethod
-    method Action getMMIOResp(Mem a);
+    method Action getMMIOResp(MemResp a);
 		fromMMIO.enq(a);
     endmethod
 endmodule

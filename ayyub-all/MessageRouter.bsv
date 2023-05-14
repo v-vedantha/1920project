@@ -42,7 +42,7 @@ module mkMessageRouter(
     Reg#(CoreID) nextCoreInput <- mkReg(0);
     Reg#(CoreID) nextCoreOutput <- mkReg(0);
     rule tick;
-        Bit#(2) result = zeroExtend(nextCoreInput + 1);
+        CoreIDPlusOne result = zeroExtend(nextCoreInput + 1);
         nextCoreInput <= truncate(result % fromInteger(valueOf(CoreNum)));
     endrule
 

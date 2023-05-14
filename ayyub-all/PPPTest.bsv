@@ -5,6 +5,7 @@ import Vector::*;
 import FIFO::*;
 import FIFOF::*;
 import MemTypes::*;
+import WideMem::*;
 import SpecialFIFOs::*;
 import MessageFifo::*;
 import MessageRouter::*;
@@ -50,7 +51,7 @@ module mkPPPTest(Empty);
 
     MessageFifo#(2) c2pQ <- mkMessageFifo;
     MessageFifo#(2) p2cQ <- mkMessageFifo;
-    WideMem widemem <- mkWideMemRegFile;
+    WideMem widemem <- mkWideMem;
 
     Empty dut <- mkPPP(toMessageGet(c2pQ), toMessagePut(p2cQ), widemem);
 	let toParent = toMessagePut(c2pQ);
