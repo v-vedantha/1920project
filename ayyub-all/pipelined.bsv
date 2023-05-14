@@ -217,9 +217,28 @@ module mkpipelined(RVIfc);
         Bool stall2 <- sb.search2(rs2_idx);
         stall = stall || stall2;
 
+<<<<<<< HEAD
         if (!stall) begin
             if (decodedInst.valid_rd) begin
                 sb.insert(fields.rd);
+=======
+        let rs1_idx = getInstFields(instr).rs1;
+        let rs2_idx = getInstFields(instr).rs2;
+        let rd_idx = getInstFields(instr).rd;
+
+        let should_stall_rs1 = scoreboard[rs1_idx][2] != 0;
+        let should_stall_rs2 = scoreboard[rs2_idx][2] != 0;
+        let should_stall = should_stall_rs1 || should_stall_rs2;
+
+        if (debug) $display("Reg info: %x %x | %x %x", rs1_idx, rs2_idx, should_stall_rs1, should_stall_rs2);
+
+        if (!should_stall) begin
+        
+		let rv1 = (rs1_idx == 0 ? 0 : rf[rs1_idx][1]);
+		let rv2 = (rs2_idx == 0 ? 0 : rf[rs2_idx][1]);
+            if (decodedInst.valid_rd && (rd_idx != 0)) begin
+                scoreboard[rd_idx][2] <= scoreboard[rd_idx][2] + 1;
+>>>>>>> 2e365086819167b1aa2652f0c896dc2e644c5cd3
             end
             fromImem.deq();
             let rs1 <- rf.read1(rs1_idx);
