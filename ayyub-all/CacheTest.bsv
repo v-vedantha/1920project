@@ -224,7 +224,7 @@ module mkCacheTest(Empty);
 	endseq);
 
 	Stmt downgrade_mini_tests = (seq
-		$display("Downgrade mini test 4: downgrade req interleaved with upgrade req");
+		$display("Downgrade mini test 1: downgrade req interleaved with upgrade req");
 		$display("  Requesting load to cache");
 		reqLd(address(0,1,0), 5);
 		$display("  Looking for upgrade to S request to main memory");
@@ -254,7 +254,7 @@ module mkCacheTest(Empty);
 	endseq);
 
     Stmt replace_mini_tests = (seq
-		$display("Replacement mini test 5: replacement and rule 7");
+		$display("Replacement mini test 1: replacement and rule 7");
 		$display("  Requesting load to cache line (0,2)");
 		reqLd( address(0,2,0), 7 );
 		$display("  Looking for upgrade request");

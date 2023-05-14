@@ -84,7 +84,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
   Bool responseOnWrite = False;
 
-  Bool debug = True;
+  Bool debug = False;
 
 
   // ReqType reqType = cacheReq.write == 1 ? St : Ld;
@@ -93,7 +93,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
   Reg#(Bit#(1000)) cycle <- mkReg(0);
   rule cycle_count;
-      $display("%x %x", cacheState, downgradeState); // { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp } | { DowngradeStart, DowngradeFinish }
+      // $display("%x %x", cacheState, downgradeState); // { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp } | { DowngradeStart, DowngradeFinish }
       cycle <= cycle + 1;
   endrule
 
@@ -111,7 +111,9 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
       Word tableData = tableLine[requestInfo.blockOffset];
 
-      $display("What the fuck is my state in assess: %x", tableMSI);
+      if (debug) begin
+        $display("What the fuck is my state in assess: %x", tableMSI);
+      end
       
       // Bool isHit = True;
 
@@ -189,9 +191,16 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
         CacheTag tableTag = fromMaybe(?, cacheTableTag);
         LineAddr la = {tableTag, requestInfo.lineIndex};
 
-        CacheMemResp writeback_resp = CacheMemResp{ child: id, addr: la, state: I, data: tagged Valid(cacheTableLine) };
+
+        
+        CacheMemResp writeback_resp = CacheMemResp{ child: id, addr: la, state: I, data: cacheTableMSI == M ? tagged Valid(cacheTableLine) : Invalid };
         // $display("Response type 1");
         toMem.enq_resp(writeback_resp);
+
+        cacheMSIs[requestInfo.lineIndex] <= I;
+        cacheTableMSI <= I;
+
+        
 
         // MainMemReq writeback_req = MainMemReq { write: 1'b1, addr: la, data: cacheTableLine };
         // memReqQ.enq(writeback_req);
@@ -321,6 +330,9 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
         // $display("Response type 2");
         toMem.enq_resp(CacheMemResp{ child: id, addr: req.addr, state: req.state, data: Invalid});
       end
+    end
+    else  begin
+      $display("Vedantha exposed");
     end
 
     downgradeReq <= req;
