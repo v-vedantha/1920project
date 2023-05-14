@@ -24,19 +24,6 @@ interface RefDMem;
 endinterface
 typedef enum { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp } CacheState deriving (Eq, FShow, Bits);
 typedef enum { DowngradeStart, DowngradeFinish } DowngradeState deriving (Eq, FShow, Bits);
-// typedef enum { Ld, St } ReqType deriving (Eq, FShow, Bits);
-
-
-// interface Cache;
-//     // TODO below
-  
-//     method Action putFromProc(CacheReq e); // Make request
-//     method ActionValue#(Word) getToProc(); // Gives processor returned value
-//     // method Action dequeProc(); // Removes value from processor return queue
-//     method ActionValue#(MainMemReq) getToMem(); // Make request to main memory
-//     method Action putFromMem(MainMemResp e); // Get from main memory
-// endinterface
-
 
 interface DCache;
   method Action req(MemReq r);
@@ -47,10 +34,7 @@ endinterface
 module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMem, DCache ifc);
   
   Reg#(CacheState) cacheState <- mkReg(Ready);
-
   Reg#(DowngradeState) downgradeState <- mkReg(DowngradeStart);
-  Reg#(CacheMemReq) downgradeReq <- mkRegU;
-
 
 
   BRAM_Configure cfg = defaultValue;
@@ -59,16 +43,12 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
   BRAM_Configure cfg2 = defaultValue;
   BRAM2Port#( LineIndex, Line ) dataArray <- mkBRAM2Server(cfg2);
 
-  // BRAM_Configure cfg3 = defaultValue;
-  // BRAM1Port#( LineIndex, Bool ) cleanArray <- mkBRAM1Server(cfg3);
-
   Vector#(NumCacheLines, Reg#(MSI)) cacheMSIs <- replicateM( mkReg(I) ); 
 
-  FIFO#(Word) hitQ <- mkBypassFIFO;
 
+  FIFO#(Word) hitQ <- mkBypassFIFO;
   FIFO#(MainMemReq) memReqQ <- mkFIFO;
   FIFO#(MainMemResp) memRespQ <- mkFIFO;
-
 
 
   Reg#(MemReq) cacheReq <- mkRegU;
@@ -77,17 +57,17 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
   Reg#(Maybe#(CacheTag)) cacheTableTag <- mkRegU;
   Reg#(Line) cacheTableLine <- mkRegU;
   Reg#(Word) cacheTableData <- mkRegU;
-  // Reg#(Bool) cacheTableClean <- mkRegU;
   Reg#(MSI) cacheTableMSI <- mkRegU;
 
   Reg#(Word) finalRespData <- mkRegU;
+  
+  Reg#(CacheMemReq) downgradeReq <- mkRegU;
+
 
   Bool responseOnWrite = False;
-
   Bool debug = False;
 
 
-  // ReqType reqType = cacheReq.write == 1 ? St : Ld;
   MemOp reqType = cacheReq.op;
 
 
@@ -98,29 +78,16 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
   endrule
 
   rule assess_rule if (cacheState == Assess);
-      // $display("The rule is firing");
-
-      
   
       Maybe#(CacheTag) maybeTableTag <- tagArray.portA.response.get();
 
       CacheTag tableTag = fromMaybe(?, maybeTableTag);
       Line tableLine <- dataArray.portA.response.get();
-      // Bool tableClean <- cleanArray.portA.response.get();
       MSI tableMSI = cacheMSIs[requestInfo.lineIndex];
 
       Word tableData = tableLine[requestInfo.blockOffset];
 
-      if (debug) begin
-        $display("What the fuck is my state in assess: %x", tableMSI);
-      end
-      
-      // Bool isHit = True;
-
-      // if (!isValid(maybeTableTag)) isHit = False;
-      // else if (tableTag != requestInfo.tag) isHit = False;
-
-      Bool isHit = !(!isValid(maybeTableTag) || tableTag != requestInfo.tag);
+      Bool isHit = isValid(maybeTableTag) && (tableTag == requestInfo.tag);
 
       if (isHit) begin
 
@@ -145,11 +112,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
               $display("Assess rule just wrote to data");
               $display(fshow(newLine));
             end
-
-            // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
-            //                                         responseOnWrite: False,
-            //                                         address: requestInfo.lineIndex,
-            //                                         datain: False});
+            
             if (responseOnWrite) hitQ.enq(0); // Dummy resp for responseOnWrite
 
             cacheState <= Ready;
@@ -165,50 +128,22 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
       cacheTableTag <= maybeTableTag;
       cacheTableLine <= tableLine;
-      // cacheTableClean <= tableClean;
       cacheTableMSI <= tableMSI;
       cacheTableData <= tableData;
       
   endrule
 
   rule start_miss_rule if (cacheState == StartMiss);
-     
-      // Writeback request
-      // if (isValid(cacheTableTag) && !cacheTableClean) begin
-      //   CacheTag tableTag = fromMaybe(?, cacheTableTag);
-      //   LineAddr la = {tableTag, requestInfo.lineIndex};
-      //   MainMemReq writeback_req = MainMemReq { write: 1'b1, addr: la, data: cacheTableLine };
-      //   memReqQ.enq(writeback_req);
-
-      //   cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
-      //                                             responseOnWrite: False,
-      //                                             address: requestInfo.lineIndex,
-      //                                             datain: True});
-      // end
-
-
+      
       if (cacheTableMSI != I) begin
         CacheTag tableTag = fromMaybe(?, cacheTableTag);
         LineAddr la = {tableTag, requestInfo.lineIndex};
 
-
-        
         CacheMemResp writeback_resp = CacheMemResp{ child: id, addr: la, state: I, data: cacheTableMSI == M ? tagged Valid(cacheTableLine) : Invalid };
-        // $display("Response type 1");
         toMem.enq_resp(writeback_resp);
 
         cacheMSIs[requestInfo.lineIndex] <= I;
         cacheTableMSI <= I;
-
-        
-
-        // MainMemReq writeback_req = MainMemReq { write: 1'b1, addr: la, data: cacheTableLine };
-        // memReqQ.enq(writeback_req);
-
-        // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
-        //                                           responseOnWrite: False,
-        //                                           address: requestInfo.lineIndex,
-        //                                           datain: True});
       end
 
       cacheState <= SendFillReq;
@@ -216,31 +151,26 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
   rule send_fill_rule if (cacheState == SendFillReq);
       LineAddr la = { requestInfo.tag, requestInfo.lineIndex };
-  
-      // MainMemReq missing_line_req = MainMemReq { write: 1'b0, addr: la, data: ? };
-      // memReqQ.enq(missing_line_req);
-
-      // typedef struct{
-      //     CoreID      child;
-      //     CacheAddr        addr;
-      //     MSI         state;
-      // } CacheMemReq
 
       MSI new_state = (reqType == Ld) ? S : M;
       CacheMemReq missing_line_req = CacheMemReq{ child: id, addr: la, state: new_state };
       toMem.enq_req(missing_line_req);
-      // $display("Requesting address ", fshow(missing_line_req));
+
+      if (debug) begin
+        $display("Requesting address ", fshow(missing_line_req));
+      end
 
       cacheState <= WaitFillResp;
   endrule
 
   rule wait_fill_rule if (cacheState == WaitFillResp && fromMem.hasResp);
-      // $display("Entered rule");
-  
-      // MainMemResp resp = memRespQ.first();
 
       CacheMemResp resp = fromMem.first().Resp;
-      // $display("Response is ", fshow(resp));
+
+      if (debug) begin
+        $display("Response is ", fshow(resp));
+      end
+
       Line resp_line = fromMaybe(?, resp.data);
 
       tagArray.portA.request.put(BRAMRequest{write: True, // False for read
@@ -261,14 +191,8 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
           $display(fshow(resp_line));
         end
 
-        // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
-        //                                         responseOnWrite: False,
-        //                                         address: requestInfo.lineIndex,
-        //                                         datain: True});
-
         Word respData = resp_line[requestInfo.blockOffset];
         finalRespData <= respData;
-        // hitQ.enq(respData);
       end
       else begin
         Line newLine = isValid(resp.data) ? take(resp_line) : take(cacheTableLine); // Assuming that it is only Invalid for store hits when in S
@@ -287,14 +211,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
           $display(fshow(newLine));
         end
 
-        // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
-        //                                         responseOnWrite: False,
-        //                                         address: requestInfo.lineIndex,
-        //                                         datain: False});
-        // hitQ.enq(0); // Dummy resp for responseOnWrite
       end
-
-      // memRespQ.deq();
       
       fromMem.deq();
 
@@ -314,9 +231,11 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
     fromMem.deq();
     
     LineIndex li = req.addr[valueOf(NumCacheLineBits) - 1 : 0];
-    // AddrInfo ai = extractAddrInfo(req.addr);
     MSI currentState = cacheMSIs[li];
-    $display("Downgrade start rule from MSI ", fshow(currentState));
+
+    if (debug) begin
+      $display("Downgrade start rule from MSI ", fshow(currentState));
+    end
     
     if (currentState > req.state) begin
       if (currentState == M) begin
@@ -327,12 +246,8 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
         downgradeState <= DowngradeFinish;
       end else begin
         cacheMSIs[li] <= req.state;
-        // $display("Response type 2");
         toMem.enq_resp(CacheMemResp{ child: id, addr: req.addr, state: req.state, data: Invalid});
       end
-    end
-    else  begin
-      $display("Vedantha exposed");
     end
 
     downgradeReq <= req;
@@ -340,16 +255,18 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
   rule downgrade_end_rule if (cacheState != FinalResp &&
                               downgradeState == DowngradeFinish);
+
     Line data <- dataArray.portB.response.get();
-    // AddrInfo ai = extractAddrInfo(downgradeReq.addr);
     LineIndex li = downgradeReq.addr[valueOf(NumCacheLineBits) - 1 : 0];
     cacheMSIs[li] <= downgradeReq.state;
 
-    // $display("Response type 3");
     CacheMemResp resp = CacheMemResp{ child: id, addr: downgradeReq.addr, state: downgradeReq.state, data: tagged Valid(data) };
     toMem.enq_resp(resp);
 
-    $display("Returning data", fshow(resp));
+    if (debug) begin
+      $display("Downgrade end: returning data", fshow(resp));
+    end
+    
     downgradeState <= DowngradeStart;
   endrule
 
@@ -367,11 +284,6 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
                                             address: ai.lineIndex,
                                             datain: ?});
       
-      // cleanArray.portA.request.put(BRAMRequest{write: False, // False for read
-      //                                       responseOnWrite: False,
-      //                                       address: ai.lineIndex,
-      //                                       datain: ?});
-      
       cacheReq <= r;
       requestInfo <= ai;
 
@@ -383,44 +295,5 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
     hitQ.deq();  
     return hitQ.first();
   endmethod
-
-  // method Action putFromProc(CacheReq e) if (cacheState == Ready);
-  //     AddrInfo ai = extractAddrInfo(e.addr);
-      
-  //     tagArray.portA.request.put(BRAMRequest{write: False, // False for read
-  //                                           responseOnWrite: False,
-  //                                           address: ai.lineIndex,
-  //                                           datain: ?});
-      
-  //     dataArray.portA.request.put(BRAMRequest{write: False, // False for read
-  //                                           responseOnWrite: False,
-  //                                           address: ai.lineIndex,
-  //                                           datain: ?});
-      
-  //     cleanArray.portA.request.put(BRAMRequest{write: False, // False for read
-  //                                           responseOnWrite: False,
-  //                                           address: ai.lineIndex,
-  //                                           datain: ?});
-      
-  //     cacheReq <= e;
-  //     requestInfo <= ai;
-
-  //     cacheState <= Assess;
-  // endmethod
-
-  // method ActionValue#(Word) getToProc();
-  //   hitQ.deq();  
-  //   return hitQ.first();
-  // endmethod
-
-  // method ActionValue#(MainMemReq) getToMem();
-  //     memReqQ.deq();
-  //     return memReqQ.first();
-  // endmethod
-
-  // method Action putFromMem(MainMemResp e);
-  //     memRespQ.enq(e);
-  // endmethod
-
 
 endmodule
