@@ -31,6 +31,52 @@ interface DCache;
 endinterface
 
 
+interface RefMem;
+	interface Vector#(CoreNum, RefIMem) iMem;
+	interface Vector#(CoreNum, RefDMem) dMem;
+endinterface
+module mkRefDummyMem(RefMem);
+	Vector#(CoreNum, RefIMem) iVec = ?;
+	Vector#(CoreNum, RefDMem) dVec = ?;
+	for(Integer i = 0; i < valueOf(CoreNum); i = i+1) begin
+		iVec[i] = (interface RefIMem;
+			method Action fetch(CacheAddr pc, Instruction inst);
+				noAction;
+			endmethod
+		endinterface);
+		dVec[i] = (interface RefDMem;
+			method Action issue(MemReq req);
+				noAction;
+			endmethod
+			method Action commit(MemReq req, Maybe#(Line) line, Maybe#(MemResp) resp);
+				noAction;
+			endmethod
+		endinterface);
+	end
+
+	interface iMem = iVec;
+	interface dMem = dVec;
+endmodule
+
+
+function LineAddr getLineAddr(CacheAddr a);
+	AddrInfo ai = extractAddrInfo(a);
+	LineAddr la = { ai.tag, ai.lineIndex };
+	return la;
+endfunction
+interface MemReqIDGen;
+	method ActionValue#(MemReqID) getID;
+endinterface
+
+module mkMemReqIDGen(MemReqIDGen);
+	Reg#(MemReqID) data <- mkReg(0);
+
+	method ActionValue#(MemReqID) getID;
+		data <= data + 1;
+		return data;
+	endmethod
+endmodule
+
 module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMem, DCache ifc);
   
   Reg#(CacheState) cacheState <- mkReg(Ready);
@@ -59,6 +105,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
   Reg#(Word) cacheTableData <- mkRegU;
   Reg#(MSI) cacheTableMSI <- mkRegU;
 
+  Reg#(Line) finalRespLine <- mkRegU;
   Reg#(Word) finalRespData <- mkRegU;
   
   Reg#(CacheMemReq) downgradeReq <- mkRegU;
@@ -95,6 +142,8 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
           hitQ.enq(tableData);
 
           cacheState <= Ready;
+
+          refDMem.commit(cacheReq, Valid(tableLine), Valid(tableData)); // MemReq req, Maybe#(CacheLine) line, Maybe#(MemResp) resp
         end
         else begin
 
@@ -113,7 +162,10 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
               $display(fshow(newLine));
             end
             
-            if (responseOnWrite) hitQ.enq(0); // Dummy resp for responseOnWrite
+            if (responseOnWrite) begin
+              hitQ.enq(0); // Dummy resp for responseOnWrite
+              refDMem.commit(cacheReq, Valid(newLine), Invalid);
+            end
 
             cacheState <= Ready;
           end
@@ -193,6 +245,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
         Word respData = resp_line[requestInfo.blockOffset];
         finalRespData <= respData;
+        finalRespLine <= resp_line;
       end
       else begin
         Line newLine = isValid(resp.data) ? take(resp_line) : take(cacheTableLine); // Assuming that it is only Invalid for store hits when in S
@@ -211,6 +264,8 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
           $display(fshow(newLine));
         end
 
+        finalRespLine <= newLine;
+
       end
       
       fromMem.deq();
@@ -219,7 +274,11 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
   endrule
 
   rule final_resp_rule if (cacheState == FinalResp);
-    if (reqType == Ld || responseOnWrite) hitQ.enq(reqType == Ld ? finalRespData : 0);
+    if (reqType == Ld || responseOnWrite) begin
+      hitQ.enq(reqType == Ld ? finalRespData : 0);
+      refDMem.commit(cacheReq, Valid(finalRespLine), (reqType==Ld) ? Valid(finalRespData) : Invalid);
+    end
+    
     cacheState <= Ready;
   endrule
 
@@ -288,6 +347,9 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
       requestInfo <= ai;
 
       cacheState <= Assess;
+
+
+      refDMem.issue(r);
 
   endmethod
   

@@ -10,6 +10,7 @@ import MessageFifo::*;
 import MessageRouter::*;
 import CoherencyTypes::*;
 import PPP::*;
+
 function LineAddr getLineAddr(LineAddr a);
 	return truncateLSB(a);
 endfunction

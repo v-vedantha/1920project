@@ -11,39 +11,6 @@ import MessageRouter::*;
 import DCache::*;
 
 
-interface RefMem;
-	interface Vector#(CoreNum, RefIMem) iMem;
-	interface Vector#(CoreNum, RefDMem) dMem;
-endinterface
-module mkRefDummyMem(RefMem);
-	Vector#(CoreNum, RefIMem) iVec = ?;
-	Vector#(CoreNum, RefDMem) dVec = ?;
-	for(Integer i = 0; i < valueOf(CoreNum); i = i+1) begin
-		iVec[i] = (interface RefIMem;
-			method Action fetch(CacheAddr pc, Instruction inst);
-				noAction;
-			endmethod
-		endinterface);
-		dVec[i] = (interface RefDMem;
-			method Action issue(MemReq req);
-				noAction;
-			endmethod
-			method Action commit(MemReq req, Maybe#(Line) line, Maybe#(MemResp) resp);
-				noAction;
-			endmethod
-		endinterface);
-	end
-
-	interface iMem = iVec;
-	interface dMem = dVec;
-endmodule
-
-
-function LineAddr getLineAddr(CacheAddr a);
-	AddrInfo ai = extractAddrInfo(a);
-	LineAddr la = { ai.tag, ai.lineIndex };
-	return la;
-endfunction
 
 
 (* synthesize *)
