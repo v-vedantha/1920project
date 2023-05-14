@@ -18,11 +18,11 @@ function Bool isCompatible(MSI a, MSI b);
     return (a == S && b == S) || (a == I) || (b == I);
 endfunction
 
-function LineIndex getSlot(CacheAddr addr);
+function LineIndex getSlot(LineAddr addr);
     return truncate(addr);
 endfunction
 
-function CacheTag getTag(CacheAddr addr);
+function CacheTag getTag(LineAddr addr);
     return truncate(addr >> valueOf(NumCacheLineBits));
 endfunction
 

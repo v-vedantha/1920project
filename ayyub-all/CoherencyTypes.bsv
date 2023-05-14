@@ -23,13 +23,13 @@ typedef Bit#(TLog#(CoreNum)) CoreID;
 
 typedef struct{
     CoreID            child;
-    CacheAddr              addr;
+    LineAddr              addr;
     MSI               state;
     Maybe#(Line) data;
 } CacheMemResp deriving(Eq, Bits, FShow);
 typedef struct{
     CoreID      child;
-    CacheAddr        addr;
+    LineAddr        addr;
     MSI         state;
 } CacheMemReq deriving(Eq, Bits, FShow);
 typedef union tagged {
@@ -90,7 +90,7 @@ endinstance
 // This is defined here since it depends on the CacheLine type
 typedef struct{
     Bit#(NumPackedLineBits) write_en;  // Word write enable
-    CacheAddr                 addr;
+    LineAddr                 addr;
     Line            data;      // Vector#(CacheLineWords, Data)
 } WideMemReq deriving(Eq,Bits,FShow);
 

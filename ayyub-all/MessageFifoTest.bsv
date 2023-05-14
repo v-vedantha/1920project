@@ -72,10 +72,10 @@ module mkMessageFifoTest(Empty);
 
     Action wait_for_message = when( message_fifo.notEmpty, noAction );
 
-	function CacheMemReq genReq(CoreID id, CacheAddr a, MSI s);
+	function CacheMemReq genReq(CoreID id, LineAddr a, MSI s);
 		return CacheMemReq {child: id, addr: a, state: s};
 	endfunction
-	function CacheMemResp genResp(CoreID id, CacheAddr a, MSI s, Maybe#(Line) d);
+	function CacheMemResp genResp(CoreID id, LineAddr a, MSI s, Maybe#(Line) d);
 		return CacheMemResp {child: id, addr: a, state: s, data: d};
 	endfunction
 

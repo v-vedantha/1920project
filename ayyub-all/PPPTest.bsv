@@ -10,7 +10,7 @@ import MessageFifo::*;
 import MessageRouter::*;
 import CoherencyTypes::*;
 import PPP::*;
-function LineAddr getLineAddr(CacheAddr a);
+function LineAddr getLineAddr(LineAddr a);
 	return truncateLSB(a);
 endfunction
 // Dummy WideMem module for testing, only has address 0
