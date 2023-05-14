@@ -23,9 +23,9 @@ module mkSingleCore(
     // BRAM2PortBE#(Bit#(30), Word, 4) bram <- mkBRAM2ServerBE(cfg);
 
     RVIfc rv_core <- mkpipelined;
-    Reg#(MemReq) ireq <- mkRegU;
-    Reg#(MemReq) dreq <- mkRegU;
-    FIFO#(MemReq) mmioreq <- mkFIFO;
+    Reg#(Mem) ireq <- mkRegU;
+    Reg#(Mem) dreq <- mkRegU;
+    FIFO#(Mem) mmioreq <- mkFIFO;
     let debug = True;
     Reg#(Bit#(32)) cycle_count <- mkReg(0);
 
@@ -37,14 +37,15 @@ module mkSingleCore(
 
     // Reads instruction memory requests from the processor, forwards to cache
     rule requestI;
-        MemReq req <- rv_core.getIReq;
+        Mem req <- rv_core.getIReq;
+        MemReq req2 = MemReq{ addr: req.addr, data: req.data, op: req.byte_en == 0 ? Ld : St };
 
         if (debug) $display("Get IReq", fshow(req));
         ireq <= req;
 
         // CacheReq cReq = CacheReq{ write: toWrite(req.byte_en), addr: req.addr, data: req.data };
 
-        iCache.req(req);
+        iCache.req(req2);
     endrule
 
     // Sends instruction memory responses to the processor from the cache
@@ -54,19 +55,21 @@ module mkSingleCore(
         let req = ireq;
         if (debug) $display("Get IResp ", fshow(req), fshow(cacheData));
         // req.data = cacheData;
-        rv_core.getIResp(cacheData);
+        Mem resp = Mem{ addr: req.addr, data: cacheData };
+        rv_core.getIResp(resp);
     endrule
 
     // Reads data memory requests from the processor
     rule requestD;
-        MemReq req <- rv_core.getDReq;
+        Mem req <- rv_core.getDReq;
+        MemReq req2 = MemReq{ addr: req.addr, data: req.data, op: req.byte_en == 0 ? Ld : St };
 
         if (debug) $display("Get DReq", fshow(req));
         dreq <= req;
 
         // CacheReq cReq = CacheReq{ write: toWrite(req.byte_en), addr: req.addr, data: req.data };
 
-        dCache.req(req);
+        dCache.req(req2);
     endrule
 
     // Sends data memory responses to the processor
@@ -75,21 +78,22 @@ module mkSingleCore(
 
         let req = dreq;
         if (debug) $display("Get DResp ", fshow(req), fshow(cacheData));
+        Mem resp = Mem{ addr: req.addr, data: cacheData };
         // req.data = cacheData;
-        rv_core.getDResp(cacheData);
+        rv_core.getDResp(resp);
     endrule
   
     // Reads MMIO memory requests from the processor
     rule requestMMIO;
         let req <- rv_core.getMMIOReq;
         if (debug) $display("Get MMIOReq", fshow(req));
-        // if (req.byte_en == 'hf) begin
+        if (req.byte_en == 'hf) begin
             if (req.addr == 'hf000_fff4) begin
                 // Write integer to STDERR
                         $fwrite(stderr, "%0d", req.data);
                         $fflush(stderr);
             end
-        // end
+        end
         if (req.addr ==  'hf000_fff0) begin
                 // Writing to STDERR
                 $fwrite(stderr, "%c", req.data[7:0]);
@@ -111,12 +115,11 @@ module mkSingleCore(
         mmioreq.enq(req);
     endrule
 
-    // Reads MMIO memory requests from the processor
     rule responseMMIO;
         let req = mmioreq.first();
         mmioreq.deq();
         if (debug) $display("Put MMIOResp", fshow(req));
-        rv_core.getMMIOResp(?);
+        rv_core.getMMIOResp(req);
     endrule
     
 endmodule
