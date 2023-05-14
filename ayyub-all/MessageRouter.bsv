@@ -12,8 +12,8 @@ interface MessageGet;
   method Action deq;
 endinterface
 interface MessagePut;
-  method Action enq_resp(CacheMemResp d);
-  method Action enq_req(CacheMemReq d);
+    method Action enq_req(CacheMemReq d);
+    method Action enq_resp(CacheMemResp d);
 endinterface
 
 function MessagePut toMessagePut(MessageFifo#(n) ifc);

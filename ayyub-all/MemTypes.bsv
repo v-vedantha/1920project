@@ -43,3 +43,24 @@ typedef struct {
                } MainMemReq deriving (Eq, FShow, Bits, Bounded);
 
 typedef Line MainMemResp;
+
+
+
+
+typedef Word MemResp;
+
+// just for debugging, add ID to each req
+//`ifdef DEBUG
+typedef Bit#(32) MemReqID;
+//`else
+//typedef Bit#(0) MemReqID;
+//`endif
+
+typedef enum{Ld, St, Lr, Sc, Fence} MemOp deriving(Eq, Bits, FShow);
+
+typedef struct{
+    MemOp op;
+    CacheAddr  addr;
+    Word  data;
+	MemReqID rid; // unique for debug mode
+} MemReq deriving(Eq, Bits, FShow);
