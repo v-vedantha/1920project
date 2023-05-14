@@ -178,6 +178,9 @@ module mkpipelined(RVIfc);
         let should_stall_rs1 = scoreboard[rs1_idx][2] != 0;
         let should_stall_rs2 = scoreboard[rs2_idx][2] != 0;
         let should_stall = should_stall_rs1 || should_stall_rs2;
+
+        if (debug) $display("Reg info: %x %x | %x %x", rs1_idx, rs2_idx, should_stall_rs1, should_stall_rs2);
+
         if (!should_stall) begin
         
 		let rv1 = (rs1_idx == 0 ? 0 : rf[rs1_idx][1]);
