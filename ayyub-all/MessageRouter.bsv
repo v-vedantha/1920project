@@ -39,6 +39,7 @@ module mkMessageRouter(
   MessageGet m2r, MessagePut r2m,
   Empty ifc 
 );
+    Bool debug = True;
     Reg#(CoreID) nextCoreInput <- mkReg(0);
     Reg#(CoreID) nextCoreOutput <- mkReg(0);
     rule tick;
@@ -46,7 +47,8 @@ module mkMessageRouter(
         nextCoreInput <= truncate(result % fromInteger(valueOf(CoreNum)));
     endrule
 
-    rule addToM;
+    rule addToM if (c2r[nextCoreInput].notEmpty);
+        if (debug) $display("addToM");
         MessageGet m = c2r[nextCoreInput];
         let firstMessage = m.first();
         if (m.hasResp) begin
@@ -55,10 +57,13 @@ module mkMessageRouter(
         end else if (m.hasReq) begin
             r2m.enq_req(firstMessage.Req);
             c2r[nextCoreInput].deq();
+        end else begin
+            $display("Shit man");
         end
     endrule
 
-    rule addToC;
+    rule addToC if (m2r.hasResp || m2r.hasReq);
+        if (debug) $display("addToC");
         CacheMemMessage m = m2r.first();
         if (m2r.hasResp()) begin
             r2c[m.Resp.child].enq_resp(m.Resp);
@@ -66,6 +71,8 @@ module mkMessageRouter(
         end else if (m2r.hasReq()) begin
             r2c[m.Req.child].enq_req(m.Req);
             m2r.deq();
+        end else begin
+            $display("Shite man");
         end
     endrule
 endmodule

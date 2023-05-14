@@ -51,7 +51,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
   Reg#(CacheMemReq) downgradeReq <- mkRegU;
 
 
-  Bool responseOnWrite = False;
+  Bool responseOnWrite = True;
   Bool debug = False;
 
 
@@ -60,7 +60,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
   Reg#(Bit#(1000)) cycle <- mkReg(0);
   rule cycle_count;
-      // $display("%x %x", cacheState, downgradeState); // { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp } | { DowngradeStart, DowngradeFinish }
+      $display("%x %x", cacheState, downgradeState); // { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp } | { DowngradeStart, DowngradeFinish }
       cycle <= cycle + 1;
   endrule
 
