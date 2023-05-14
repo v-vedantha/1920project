@@ -9,4 +9,4 @@ do
     exec $BLUESPECDIR/tcllib/bluespec/bluesim.tcl $0.so mkMessageRouterTest --script_name `basename $0` -h
   fi
 done
-exec $BLUESPECDIR/tcllib/bluespec/bluesim.tcl $0.so mkMessageRouterTest --script_name `basename $0` --creation_time 1683932686 "$@"
+exec $BLUESPECDIR/tcllib/bluespec/bluesim.tcl $0.so mkMessageRouterTest --script_name `basename $0` --creation_time 1684038384 "$@"
