@@ -2,4 +2,4 @@
 */output.log
 *.so
 *.sched
-!*.bsv
+!ayyub-all/*.bsv
