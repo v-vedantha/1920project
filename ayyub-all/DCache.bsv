@@ -9,19 +9,6 @@ import MessageRouter::*;
 import MessageFifo::*;
 import CoherencyTypes::*;
 
-typedef 32 InstSz;
-typedef Bit#(InstSz) Instruction;
-interface RefIMem;
-	method Action fetch(CacheAddr pc, Instruction inst);
-endinterface
-
-interface RefDMem;
-	method Action issue(MemReq req);
-	method Action commit(MemReq req, Maybe#(Line) line, Maybe#(MemResp) resp);
-	// line is the original cache line (before write is done)
-	// set it to invalid if you don't want to check the value 
-	// or you don't know the value (e.g. when you bypass from stq or when store-cond fail)
-endinterface
 typedef enum { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp } CacheState deriving (Eq, FShow, Bits);
 typedef enum { DowngradeStart, DowngradeFinish } DowngradeState deriving (Eq, FShow, Bits);
 

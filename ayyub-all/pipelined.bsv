@@ -2,6 +2,8 @@ import FIFO::*;
 import SpecialFIFOs::*;
 import RegFile::*;
 import RVUtil::*;
+import MemTypes::*;
+import CoherencyTypes::*;
 import Vector::*;
 import KonataHelper::*;
 import Printf::*;

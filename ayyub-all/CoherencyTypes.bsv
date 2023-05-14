@@ -1,6 +1,46 @@
 import Vector::*;
 import MemTypes::*;
 
+
+typedef 32 InstSz;
+typedef Bit#(InstSz) Instruction;
+interface RefIMem;
+	method Action fetch(CacheAddr pc, Instruction inst);
+endinterface
+
+interface RefDMem;
+	method Action issue(MemReq req);
+	method Action commit(MemReq req, Maybe#(Line) line, Maybe#(MemResp) resp);
+	// line is the original cache line (before write is done)
+	// set it to invalid if you don't want to check the value 
+	// or you don't know the value (e.g. when you bypass from stq or when store-cond fail)
+endinterface
+interface RefMem;
+	interface Vector#(CoreNum, RefIMem) iMem;
+	interface Vector#(CoreNum, RefDMem) dMem;
+endinterface
+module mkRefDummyMem(RefMem);
+	Vector#(CoreNum, RefIMem) iVec = ?;
+	Vector#(CoreNum, RefDMem) dVec = ?;
+	for(Integer i = 0; i < valueOf(CoreNum); i = i+1) begin
+		iVec[i] = (interface RefIMem;
+			method Action fetch(CacheAddr pc, Instruction inst);
+				noAction;
+			endmethod
+		endinterface);
+		dVec[i] = (interface RefDMem;
+			method Action issue(MemReq req);
+				noAction;
+			endmethod
+			method Action commit(MemReq req, Maybe#(Line) line, Maybe#(MemResp) resp);
+				noAction;
+			endmethod
+		endinterface);
+	end
+
+	interface iMem = iVec;
+	interface dMem = dVec;
+endmodule
 typedef enum { M, S, I } MSI deriving( Bits, Eq, FShow );
 
 typedef enum {

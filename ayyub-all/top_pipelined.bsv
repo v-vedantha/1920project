@@ -1,9 +1,16 @@
 import RVUtil::*;
+import Vector::*;
 import BRAM::*;
+import CoherencyTypes::*;
+import MessageFifo::*;
+import MessageRouter::*;
 import pipelined::*;
 import FIFO::*;
 import MemTypes::*;
-import Cache::*;
+import SingleCore::*;
+import WideMem::*;
+import PPP::*;
+import DCache::*;
 
 function Bit#(1) toWrite(Bit#(4) byte_en);
     return byte_en == 0 ? 0 : 1;
@@ -15,144 +22,51 @@ endfunction
 
 module mktop_pipelined(Empty);
     // Instantiate the dual ported memory
-    BRAM_Configure cfg = defaultValue();
-    cfg.loadFormat = tagged Hex "memlines.vmh";
-    BRAM2Port#(LineAddr, PackedLine) mainMem <- mkBRAM2Server(cfg);
     // BRAM2PortBE#(Bit#(30), Word, 4) bram <- mkBRAM2ServerBE(cfg);
 
-    RVIfc rv_core <- mkpipelined;
-    Reg#(Mem) ireq <- mkRegU;
-    Reg#(Mem) dreq <- mkRegU;
-    FIFO#(Mem) mmioreq <- mkFIFO;
-    let debug = False;
     Reg#(Bit#(32)) cycle_count <- mkReg(0);
 
-    Cache iCache <- mkCache();
-    Cache dCache <- mkCache();
+    // Cache iCache <- mkDCache();
+    // Cache dCache <- mkDCache();
+
+    // Message routers
+    Vector#(CoreNum, MessageFifo#(2)) c2r <- replicateM(mkMessageFifo);
+    // router to cache
+    Vector#(CoreNum, MessageFifo#(2)) r2c <- replicateM(mkMessageFifo);
+    // router to memory
+    MessageFifo#(2) r2m <- mkMessageFifo;
+    // memory to router
+    MessageFifo#(2) m2r <- mkMessageFifo;
+
+    let router <- mkMessageRouter(
+		map(toMessageGet, c2r), 
+		map(toMessagePut, r2c), 
+		toMessageGet(m2r), 
+		toMessagePut(r2m) 
+	);
+
+	RefMem refMem <- mkRefDummyMem;
+    // Connect Cache to router
+    DCache iCache1 <- mkDCache(0, toMessageGet(r2c[0]), toMessagePut(c2r[0]), refMem.dMem[0]);
+    // DCache iCache2 <- mkDCache(2, toMessageGet(r2c[2]), toMessagePut(c2r[2]), refMem.dMem[0]);
+    DCache dCache1 <- mkDCache(1, toMessageGet(r2c[1]), toMessagePut(c2r[1]), refMem.dMem[0]);
+    // DCache dCache2 <- mkDCache(3, toMessageGet(r2c[3]), toMessagePut(c2r[3]), refMem.dMem[0]);
+    // Memory 
+    WideMem widemem <- mkWideMem;
+
+    // PPP
+    Empty ppp <- mkPPP(toMessageGet(r2m), toMessagePut(m2r), widemem);
+
+    // Connect Cache to Processor
+    RVIfc rv_core1 <- mkpipelined;
+    // RVIfc rv_core2 <- mkpipelined;
+
+    Empty core1 <- mkSingleCore(iCache1, dCache1, rv_core1);
+    // Empty core2 <- mkSingleCore(iCache2, dCache2, rv_core2);
+
+
 
     rule tic;
 	    cycle_count <= cycle_count + 1;
     endrule
-
-
-    rule iCacheToMain;
-        MainMemReq lineReq <- iCache.getToMem();
-
-        mainMem.portB.request.put(BRAMRequest{
-            write: lineReq.write == 1,
-            responseOnWrite: False,
-            address: lineReq.addr,
-            datain: pack(lineReq.data)});
-
-        // mainMem.put(lineReq);
-    endrule
-    rule mainToICache;
-        let resp <- mainMem.portB.response.get();
-        MainMemResp line = unpack(resp);
-        iCache.putFromMem(line);
-    endrule
-
-    rule dCacheToMain;
-        MainMemReq lineReq <- dCache.getToMem();
-
-        mainMem.portA.request.put(BRAMRequest{
-            write: lineReq.write == 1,
-            responseOnWrite: False,
-            address: lineReq.addr,
-            datain: pack(lineReq.data)});
-
-        // mainMem.put(lineReq);
-    endrule
-    rule mainToDCache;
-        let resp <- mainMem.portA.response.get();
-        MainMemResp line = unpack(resp);
-        dCache.putFromMem(line);
-    endrule
-
-
-
-    // Reads instruction memory requests from the processor, forwards to cache
-    rule requestI;
-        Mem req <- rv_core.getIReq;
-
-        if (debug) $display("Get IReq", fshow(req));
-        ireq <= req;
-
-        CacheReq cReq = CacheReq{ write: toWrite(req.byte_en), addr: req.addr, data: req.data };
-
-        iCache.putFromProc(cReq);
-    endrule
-
-    // Sends instruction memory responses to the processor from the cache
-    rule responseI;
-        Word cacheData <- iCache.getToProc();
-
-        let req = ireq;
-        if (debug) $display("Get IResp ", fshow(req), fshow(cacheData));
-        req.data = cacheData;
-        rv_core.getIResp(req);
-    endrule
-
-    // Reads data memory requests from the processor
-    rule requestD;
-        Mem req <- rv_core.getDReq;
-
-        if (debug) $display("Get DReq", fshow(req));
-        dreq <= req;
-
-        CacheReq cReq = CacheReq{ write: toWrite(req.byte_en), addr: req.addr, data: req.data };
-
-        dCache.putFromProc(cReq);
-    endrule
-
-    // Sends data memory responses to the processor
-    rule responseD;
-        Word cacheData <- dCache.getToProc();
-
-        let req = dreq;
-        if (debug) $display("Get DResp ", fshow(req), fshow(cacheData));
-        req.data = cacheData;
-            rv_core.getDResp(req);
-    endrule
-  
-    // Reads MMIO memory requests from the processor
-    rule requestMMIO;
-        let req <- rv_core.getMMIOReq;
-        if (debug) $display("Get MMIOReq", fshow(req));
-        if (req.byte_en == 'hf) begin
-            if (req.addr == 'hf000_fff4) begin
-                // Write integer to STDERR
-                        $fwrite(stderr, "%0d", req.data);
-                        $fflush(stderr);
-            end
-        end
-        if (req.addr ==  'hf000_fff0) begin
-                // Writing to STDERR
-                $fwrite(stderr, "%c", req.data[7:0]);
-                $fflush(stderr);
-        end else
-            if (req.addr == 'hf000_fff8) begin
-            // Exiting Simulation
-                if (req.data == 0) begin
-                        $fdisplay(stderr, "  [0;32mPASS[0m");
-                end
-                else
-                    begin
-                        $fdisplay(stderr, "  [0;31mFAIL[0m (%0d)", req.data);
-                    end
-                $fflush(stderr);
-                $finish;
-            end
-
-        mmioreq.enq(req);
-    endrule
-
-    // Reads MMIO memory requests from the processor
-    rule responseMMIO;
-        let req = mmioreq.first();
-        mmioreq.deq();
-        if (debug) $display("Put MMIOResp", fshow(req));
-        rv_core.getMMIOResp(req);
-    endrule
-    
 endmodule

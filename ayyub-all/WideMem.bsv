@@ -17,7 +17,7 @@ module mkWideMem(WideMem);
     Reg#(Line) rf <- mkReg(unpack(0));
     FIFOF#(Line) respQ <- mkFIFOF;
     BRAM_Configure cfg = defaultValue();
-    cfg.loadFormat = tagged Hex "zero.vmh";
+    cfg.loadFormat = tagged Hex "memlines.vmh";
     BRAM1Port#(LineAddr, PackedLine) bram <- mkBRAM1Server(cfg);
     rule addToRespQ;
         let resp <- bram.portA.response.get();
