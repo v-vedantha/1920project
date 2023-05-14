@@ -22,8 +22,8 @@ interface RefDMem;
 	// set it to invalid if you don't want to check the value 
 	// or you don't know the value (e.g. when you bypass from stq or when store-cond fail)
 endinterface
-typedef enum { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp} CacheState deriving (Eq, FShow, Bits);
-typedef enum { DowngradeStart, DowngradeFinish} DowngradeState deriving (Eq, FShow, Bits);
+typedef enum { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp } CacheState deriving (Eq, FShow, Bits);
+typedef enum { DowngradeStart, DowngradeFinish } DowngradeState deriving (Eq, FShow, Bits);
 // typedef enum { Ld, St } ReqType deriving (Eq, FShow, Bits);
 
 
@@ -82,6 +82,10 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
   Reg#(Word) finalRespData <- mkRegU;
 
+  Bool responseOnWrite = False;
+
+  Bool debug = True;
+
 
   // ReqType reqType = cacheReq.write == 1 ? St : Ld;
   MemOp reqType = cacheReq.op;
@@ -89,12 +93,14 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
   Reg#(Bit#(1000)) cycle <- mkReg(0);
   rule cycle_count;
-      // $display(cacheState); // { Ready, Assess, StartMiss, SendFillReq, WaitFillResp,  FinishProcessStb }
+      $display("%x %x", cacheState, downgradeState); // { Ready, Assess, StartMiss, SendFillReq, WaitFillResp, FinalResp } | { DowngradeStart, DowngradeFinish }
       cycle <= cycle + 1;
   endrule
 
   rule assess_rule if (cacheState == Assess);
       // $display("The rule is firing");
+
+      
   
       Maybe#(CacheTag) maybeTableTag <- tagArray.portA.response.get();
 
@@ -105,11 +111,14 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
       Word tableData = tableLine[requestInfo.blockOffset];
 
+      $display("What the fuck is my state in assess: %x", tableMSI);
       
-      Bool isHit = True;
+      // Bool isHit = True;
 
-      if (!isValid(maybeTableTag)) isHit = False;
-      else if (tableTag != requestInfo.tag) isHit = False;
+      // if (!isValid(maybeTableTag)) isHit = False;
+      // else if (tableTag != requestInfo.tag) isHit = False;
+
+      Bool isHit = !(!isValid(maybeTableTag) || tableTag != requestInfo.tag);
 
       if (isHit) begin
 
@@ -130,15 +139,16 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
                                                     address: requestInfo.lineIndex,
                                                     datain: newLine});
 
-            $display("Assess rule just wrote to data");
-            $display(fshow(newLine));
-
+            if (debug) begin
+              $display("Assess rule just wrote to data");
+              $display(fshow(newLine));
+            end
 
             // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
             //                                         responseOnWrite: False,
             //                                         address: requestInfo.lineIndex,
             //                                         datain: False});
-            hitQ.enq(0); // Dummy resp for responseOnWrite
+            if (responseOnWrite) hitQ.enq(0); // Dummy resp for responseOnWrite
 
             cacheState <= Ready;
           end
@@ -180,7 +190,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
         LineAddr la = {tableTag, requestInfo.lineIndex};
 
         CacheMemResp writeback_resp = CacheMemResp{ child: id, addr: la, state: I, data: tagged Valid(cacheTableLine) };
-        $display("Response type 1");
+        // $display("Response type 1");
         toMem.enq_resp(writeback_resp);
 
         // MainMemReq writeback_req = MainMemReq { write: 1'b1, addr: la, data: cacheTableLine };
@@ -210,7 +220,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
       MSI new_state = (reqType == Ld) ? S : M;
       CacheMemReq missing_line_req = CacheMemReq{ child: id, addr: la, state: new_state };
       toMem.enq_req(missing_line_req);
-      $display("Requesting address ", fshow(missing_line_req));
+      // $display("Requesting address ", fshow(missing_line_req));
 
       cacheState <= WaitFillResp;
   endrule
@@ -221,7 +231,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
       // MainMemResp resp = memRespQ.first();
 
       CacheMemResp resp = fromMem.first().Resp;
-      $display("Response is ", fshow(resp));
+      // $display("Response is ", fshow(resp));
       Line resp_line = fromMaybe(?, resp.data);
 
       tagArray.portA.request.put(BRAMRequest{write: True, // False for read
@@ -237,8 +247,10 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
                                                   address: requestInfo.lineIndex,
                                                   datain: resp_line});
         
-        $display("Wait fill rule on load just wrote to data");
-        $display(fshow(resp_line));
+        if (debug) begin
+          $display("Wait fill rule on load just wrote to data");
+          $display(fshow(resp_line));
+        end
 
         // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
         //                                         responseOnWrite: False,
@@ -250,8 +262,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
         // hitQ.enq(respData);
       end
       else begin
-        
-        Line newLine = take(resp_line);
+        Line newLine = isValid(resp.data) ? take(resp_line) : take(cacheTableLine); // Assuming that it is only Invalid for store hits when in S
         newLine[requestInfo.blockOffset] = cacheReq.data;
       
         dataArray.portA.request.put(BRAMRequest{write: True, // False for read
@@ -259,11 +270,13 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
                                                 address: requestInfo.lineIndex,
                                                 datain: newLine});
         
-        $display("Wait fill rule on store just wrote to data");
-        $display(fshow(resp_line));
-        $display(fshow(cacheReq.data));
-        $display(fshow(newLine));
-        
+        if (debug) begin
+          $display("Wait fill rule on store just wrote to data");
+          $display(fshow(resp_line));
+          $display(fshow(cacheReq.data));
+          $display(requestInfo.blockOffset);
+          $display(fshow(newLine));
+        end
 
         // cleanArray.portA.request.put(BRAMRequest{write: True, // False for read
         //                                         responseOnWrite: False,
@@ -280,7 +293,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
   endrule
 
   rule final_resp_rule if (cacheState == FinalResp);
-    hitQ.enq(reqType == Ld ? finalRespData : 0);
+    if (reqType == Ld || responseOnWrite) hitQ.enq(reqType == Ld ? finalRespData : 0);
     cacheState <= Ready;
   endrule
 
@@ -294,6 +307,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
     LineIndex li = req.addr[valueOf(NumCacheLineBits) - 1 : 0];
     // AddrInfo ai = extractAddrInfo(req.addr);
     MSI currentState = cacheMSIs[li];
+    $display("Downgrade start rule from MSI ", fshow(currentState));
     
     if (currentState > req.state) begin
       if (currentState == M) begin
@@ -303,7 +317,8 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
                                               datain: ?});
         downgradeState <= DowngradeFinish;
       end else begin
-        $display("Response type 2");
+        cacheMSIs[li] <= req.state;
+        // $display("Response type 2");
         toMem.enq_resp(CacheMemResp{ child: id, addr: req.addr, state: req.state, data: Invalid});
       end
     end
@@ -318,8 +333,12 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
     LineIndex li = downgradeReq.addr[valueOf(NumCacheLineBits) - 1 : 0];
     cacheMSIs[li] <= downgradeReq.state;
 
-    $display("Response type 3");
-    toMem.enq_resp(CacheMemResp{ child: id, addr: downgradeReq.addr, state: downgradeReq.state, data: tagged Valid(data) });
+    // $display("Response type 3");
+    CacheMemResp resp = CacheMemResp{ child: id, addr: downgradeReq.addr, state: downgradeReq.state, data: tagged Valid(data) };
+    toMem.enq_resp(resp);
+
+    $display("Returning data", fshow(resp));
+    downgradeState <= DowngradeStart;
   endrule
 
   method Action req(MemReq r);
