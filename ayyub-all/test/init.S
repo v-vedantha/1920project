@@ -3,6 +3,7 @@
 # define LREG lw
 # define SREG sw
 # define REGBYTES 4
+# define GGNORE 3
 
 .section ".text.init"
 #  .text
@@ -41,7 +42,15 @@ _start:
   li  x30,0
   li  x31,0
 
-  li sp, 0xFFFFFF0
+  csrr x14, mhartid
+  bnez x14, core1_stack
+  core0_stack:  
+	  li sp, 0xFFFFFF0
+	  j ggnore
+  core1_stack:
+	  li sp, 0xFAFFFF0
+  ggnore: 
+  li x14, 0
 
   call main
 

@@ -57,7 +57,7 @@ typedef struct {
                 WhichCache whichcache;
 } CoherencyMessage deriving (Eq, FShow, Bits);
 
-typedef 2 CoreNum;
+typedef 4 CoreNum;
 typedef Bit#(32) CoreID;
 // typedef Bit#(32) CoreIDPlusOne;
 

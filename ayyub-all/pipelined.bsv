@@ -280,7 +280,7 @@ module mkpipelined#(CoreID coreID)(RVIfc);
                     labelKonataLeft(lfh,current_id, $format(" Ctrl instr "));
                     data = decodeInfo.pc + 4;
             end else if (isCSRR(funct3)) begin
-                $display("CSRR", fshow(coreID));
+                if (debug) $display("CSRR", fshow(coreID));
                 data = coreID;
             end else begin 
                 labelKonataLeft(lfh,current_id, $format(" Standard instr "));

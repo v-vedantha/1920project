@@ -48,9 +48,9 @@ module mkmulticore(Empty);
 	RefMem refMem <- mkRefDummyMem;
     // Connect Cache to router
     DCache iCache1 <- mkDCache(0, toMessageGet(r2c[0]), toMessagePut(c2r[0]), refMem.dMem[0]);
-    // DCache iCache2 <- mkDCache(2, toMessageGet(r2c[2]), toMessagePut(c2r[2]), refMem.dMem[0]);
+    DCache iCache2 <- mkDCache(2, toMessageGet(r2c[2]), toMessagePut(c2r[2]), refMem.dMem[0]);
     DCache dCache1 <- mkDCache(1, toMessageGet(r2c[1]), toMessagePut(c2r[1]), refMem.dMem[0]);
-    // DCache dCache2 <- mkDCache(3, toMessageGet(r2c[3]), toMessagePut(c2r[3]), refMem.dMem[0]);
+    DCache dCache2 <- mkDCache(3, toMessageGet(r2c[3]), toMessagePut(c2r[3]), refMem.dMem[0]);
     // Memory 
     WideMem widemem <- mkWideMem;
 
@@ -59,10 +59,10 @@ module mkmulticore(Empty);
 
     // Connect Cache to Processor
     RVIfc rv_core1 <- mkpipelined(0);
-    // RVIfc rv_core2 <- mkpipelined;
+    RVIfc rv_core2 <- mkpipelined(1);
 
     Empty core1 <- mkSingleCore(iCache1, dCache1, rv_core1);
-    // Empty core2 <- mkSingleCore(iCache2, dCache2, rv_core2);
+    Empty core2 <- mkSingleCore(iCache2, dCache2, rv_core2);
 
 
 
