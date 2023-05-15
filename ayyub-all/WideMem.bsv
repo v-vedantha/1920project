@@ -33,7 +33,7 @@ module mkWideMem(WideMem);
             });
     endmethod
     method ActionValue#(Line) resp;
-        $display("Sending", fshow(respQ.first));
+        // $display("Sending", fshow(respQ.first));
         respQ.deq;
         return respQ.first;
     endmethod

@@ -56,7 +56,7 @@ typedef struct {
 
 (* synthesize *)
 module mkpipelined(RVIfc);
-    Bool debug = True;
+    Bool debug = False;
     
     // Interface with memory and devices
     FIFO#(Mem) toImem <- mkBypassFIFO;

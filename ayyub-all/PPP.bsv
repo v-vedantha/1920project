@@ -74,7 +74,7 @@ module mkPPP(MessageGet c2m, MessagePut m2c, WideMem mem, Empty ifc);
     Reg#(CacheMemReq) currentReq <- mkReg(CacheMemReq{child: 0, addr: 0, state: I});
     Reg#(Bool) busy <- mkReg(False);
     Reg#(Bool) tryDowngrade <- mkReg(False);
-    Bool debug = True;
+    Bool debug = False;
     
     rule respond if (c2m.hasReq && !c2m.hasResp && !busy && !tryDowngrade);
         CacheMemReq req = c2m.first().Req;
@@ -85,7 +85,7 @@ module mkPPP(MessageGet c2m, MessagePut m2c, WideMem mem, Empty ifc);
 
         if (isOkToRespond(childState, req)) begin
             busy <= True;
-            $display("Reading from memory");
+            if (debug) $display("Reading from memory");
             mem.req(WideMemReq{
                 write_en: fromInteger(0),
                 addr: req.addr,

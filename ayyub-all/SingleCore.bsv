@@ -26,7 +26,7 @@ module mkSingleCore(
     Reg#(Mem) ireq <- mkRegU;
     Reg#(Mem) dreq <- mkRegU;
     FIFO#(Mem) mmioreq <- mkFIFO;
-    let debug = True;
+    let debug = False;
     Reg#(Bit#(32)) cycle_count <- mkReg(0);
 
 

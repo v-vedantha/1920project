@@ -39,7 +39,7 @@ module mkMessageRouter(
   MessageGet m2r, MessagePut r2m,
   Empty ifc 
 );
-    Bool debug = True;
+    Bool debug = False;
     Reg#(CoreID) nextCoreInput <- mkReg(0);
     Reg#(CoreID) nextCoreOutput <- mkReg(0);
     rule tick;
