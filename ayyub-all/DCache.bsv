@@ -74,11 +74,12 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
 
       Word tableData = tableLine[requestInfo.blockOffset];
 
-      Bool isHit = isValid(maybeTableTag) && (tableTag == requestInfo.tag);
+      Bool isHit = isValid(maybeTableTag) && (tableTag == requestInfo.tag) && tableMSI != I;
 
       if (isHit) begin
 
         if (reqType == Ld) begin
+          if (debug) $display("Returning data ", fshow(tableData));
           hitQ.enq(tableData);
 
           cacheState <= Ready;

@@ -1010,10 +1010,11 @@ static int verify(int n, const volatile int* test, const int* verify) {
 
 #endif //__UTIL_H
 
+volatile int done = 0;
+
 
 int main(int argc, char *argv[]) {
-volatile int done = 0;
-	putchar(done);
+	putchar(done + 65);
 	 char *s = "Hello, world!\n";
 	 putchar(*s);
   char *p;
@@ -1025,9 +1026,26 @@ volatile int done = 0;
     if( core == 0 ) {
         putchar(*s);
 	putchar(done);
+	putchar(done + 65);
 	while(done == 0);
 		putchar(66);
     } else if(core == 1) {
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
+        putchar('1');
         putchar('1');
 		done = 1;
     }
