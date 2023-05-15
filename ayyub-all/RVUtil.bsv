@@ -231,6 +231,7 @@ function Bool isLegalInstruction(Bit#(32) inst );
                                                             12'b000100000101: (fields.rs1 == 5'b00000);        // WFI
                                                             default:          False;
                                                         endcase);
+                        fn3_CSRRS: True;
                         default:                                                             False;
                     endcase
         default: False;
@@ -309,6 +310,7 @@ function Bool usesRD(Bit#(32) inst);
             5'b11001: True; // jalr
             5'b00100: True; // srli, srli, srai, srai, slli, slli, ori, sltiu, andi, slti, addi, xori
             5'b00101: True; // auipc
+            5'b11100: True;
             default: False;
         endcase;
 endfunction

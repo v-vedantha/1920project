@@ -107,7 +107,7 @@ module mkpipelined#(CoreID coreID)(RVIfc);
 
     Reg#(Bit#(32)) cycle <- mkReg(0);
     rule incr;
-                $display(cycle);
+                // $display(cycle);
         cycle <= cycle + 1;
     endrule
 
@@ -280,6 +280,7 @@ module mkpipelined#(CoreID coreID)(RVIfc);
                     labelKonataLeft(lfh,current_id, $format(" Ctrl instr "));
                     data = decodeInfo.pc + 4;
             end else if (isCSRR(funct3)) begin
+                $display("CSRR", fshow(coreID));
                 data = coreID;
             end else begin 
                 labelKonataLeft(lfh,current_id, $format(" Standard instr "));
