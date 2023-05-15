@@ -108,7 +108,7 @@ module mkSingleCore(
                         $fdisplay(stderr, "  [0;31mFAIL[0m (%0d)", req.data);
                     end
                 $fflush(stderr);
-                // $finish;
+                $finish;
             end
 
         mmioreq.enq(req);
