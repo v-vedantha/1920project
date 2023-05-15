@@ -58,7 +58,7 @@ module mkmulticore(Empty);
     Empty ppp <- mkPPP(toMessageGet(r2m), toMessagePut(m2r), widemem);
 
     // Connect Cache to Processor
-    RVIfc rv_core1 <- mkpipelined;
+    RVIfc rv_core1 <- mkpipelined(0);
     // RVIfc rv_core2 <- mkpipelined;
 
     Empty core1 <- mkSingleCore(iCache1, dCache1, rv_core1);

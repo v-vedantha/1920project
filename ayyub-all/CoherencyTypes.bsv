@@ -58,8 +58,8 @@ typedef struct {
 } CoherencyMessage deriving (Eq, FShow, Bits);
 
 typedef 2 CoreNum;
-typedef Bit#(TLog#(CoreNum)) CoreID;
-typedef Bit#(TLog#(TAdd#(1, CoreNum))) CoreIDPlusOne;
+typedef Bit#(32) CoreID;
+// typedef Bit#(32) CoreIDPlusOne;
 
 
 typedef struct{

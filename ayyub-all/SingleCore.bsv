@@ -22,7 +22,6 @@ module mkSingleCore(
     // Instantiate the dual ported memory
     // BRAM2PortBE#(Bit#(30), Word, 4) bram <- mkBRAM2ServerBE(cfg);
 
-    RVIfc rv_core <- mkpipelined;
     Reg#(Mem) ireq <- mkRegU;
     Reg#(Mem) dreq <- mkRegU;
     FIFO#(Mem) mmioreq <- mkFIFO;

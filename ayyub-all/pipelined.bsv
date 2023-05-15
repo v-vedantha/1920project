@@ -5,6 +5,7 @@ import RVUtil::*;
 import Vector::*;
 import KonataHelper::*;
 import Printf::*;
+import CoherencyTypes::*;
 import Ehr::*;
 
 typedef struct { Bit#(4) byte_en; Bit#(32) addr; Bit#(32) data; } Mem deriving (Eq, FShow, Bits);
@@ -55,7 +56,7 @@ typedef struct {
 } E2W deriving (Eq, FShow, Bits);
 
 (* synthesize *)
-module mkpipelined(RVIfc);
+module mkpipelined#(CoreID coreID)(RVIfc);
     Bool debug = False;
     
     // Interface with memory and devices
@@ -274,6 +275,8 @@ module mkpipelined(RVIfc);
             else if (isControlInst(dInst)) begin
                     labelKonataLeft(lfh,current_id, $format(" Ctrl instr "));
                     data = decodeInfo.pc + 4;
+            end else if (isCSRR(funct3)) begin
+                data = coreID;
             end else begin 
                 labelKonataLeft(lfh,current_id, $format(" Standard instr "));
             end

@@ -464,3 +464,6 @@ function Bool isControlInst(DecodedInst dInst);
     return (dInst.inst[6:4] == 3'b110); // This also covers a reserved opcode
 endfunction
 
+function Bool isCSRR(Bit#(3) funct3);
+    return funct3 == fn3_CSRRS;
+endfunction
