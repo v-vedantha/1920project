@@ -1,7 +1,6 @@
 
 import RVUtil::*;
 import BRAM::*;
-import pipelined::*;
 import FIFO::*;
 import MemTypes::*;
 import DCache::*;
@@ -12,42 +11,42 @@ interface AddrPred;
     method Action update(CacheAddr pc, CacheAddr nextPC, Bool taken);
 endinterface
 
-typedef 2 K;
-typedef 4 Entries;
-typedef Bit#(K) Index
-typedef Bit#(28) Tag;
+typedef 9 K;
+typedef TExp#(K) BranchEntries;
+typedef Bit#(K) BranchIndex;
+typedef Bit#(TSub#(30, K)) BranchTag;
 
-function Tag getAddrPredictTag(CacheAddr pc);
-    return pc[31:2 + K];
+function BranchTag getAddrPredictTag(CacheAddr pc);
+    return pc[31:2 + valueOf(K)];
 endfunction
 
-function Index getAddrPredictIndex(CacheAddr pc);
-    return pc[2+K:2];
+function BranchIndex getAddrPredictIndex(CacheAddr pc);
+    return pc[2+valueOf(K) - 1:2];
 endfunction
 
 module mkBranchPredictor(AddrPred);
-    Vector#(Entries, Tag) tags <- replicateM(0);
-    Vector#(Entries, Bool) valid <- replicateM(False);
-    Vector#(Entries, CacheAddr) nextPC <- replicateM(0);
+    Vector#(BranchEntries, Reg#(BranchTag)) tags <- replicateM(mkRegU);
+    Vector#(BranchEntries, Reg#(Bool)) valid <- replicateM(mkReg(False));
+    Vector#(BranchEntries, Reg#(CacheAddr)) predPC <- replicateM(mkRegU);
 
     method Action update(CacheAddr pc, CacheAddr nextPC, Bool taken);
-        Index index = getAddrPredictIndex(pc);
-        Tag tag = getAddrPredictTag(pc);
-        if (taken) begin
-            tags[index] <= tag;
-            valid[index] <= True;
-            nextPC[index] <= nextPC;
-        end else begin
-            valid[index] <= False;
-        end
+        BranchIndex branchIndex = getAddrPredictIndex(pc);
+        BranchTag branchTag = getAddrPredictTag(pc);
+        tags[branchIndex] <= branchTag;
+        valid[branchIndex] <= True;
+        predPC[branchIndex] <= nextPC;
+        // if (taken) begin
+        // end else begin
+        //     valid[branchIndex] <= False;
+        // end
     endmethod
 
     method CacheAddr nap(CacheAddr pc);
-        Index index = getAddrPredictIndex(pc);
-        Tag tag = getAddrPredictTag(pc);
+        BranchIndex branchIndex = getAddrPredictIndex(pc);
+        BranchTag branchTag = getAddrPredictTag(pc);
         CacheAddr returnVal = 0;
-        if (valid[index] && tags[index] == tag) begin
-            returnVal = nextPC[index];
+        if (valid[branchIndex] && tags[branchIndex] == branchTag) begin
+            returnVal = predPC[branchIndex];
         end else begin
             returnVal = pc + 4;
         end

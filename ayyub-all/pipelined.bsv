@@ -5,8 +5,10 @@ import RVUtil::*;
 import Vector::*;
 import KonataHelper::*;
 import Printf::*;
-import CoherencyTypes::*;
 import Ehr::*;
+import CoherencyTypes::*;
+import BranchPredictor::*;
+import MemTypes::*;
 
 typedef struct { Bit#(4) byte_en; Bit#(32) addr; Bit#(32) data; } Mem deriving (Eq, FShow, Bits);
 
@@ -58,6 +60,7 @@ typedef struct {
 (* synthesize *)
 module mkpipelined#(CoreID coreID)(RVIfc);
     Bool debug = False;
+    Bool useBP = False;
     
     // Interface with memory and devices
     FIFO#(Mem) toImem <- mkBypassFIFO;
@@ -70,6 +73,8 @@ module mkpipelined#(CoreID coreID)(RVIfc);
     FIFO#(F2D) f2d <- mkFIFO;
     FIFO#(D2E) d2e <- mkFIFO;
     FIFO#(E2W) e2w <- mkFIFO;
+
+    AddrPred ap <- mkBranchPredictor;
 
     Ehr#(5, Bit#(32)) pc <- mkEhr(32'h0000000);
     Ehr#(5, Bit#(3)) epoch <- mkEhr(0);
@@ -88,6 +93,7 @@ module mkpipelined#(CoreID coreID)(RVIfc);
 
     
     Reg#(Bool) starting <- mkReg(True);
+
 	rule do_tic_logging;
         if (starting) begin
             let f <- $fopen(dumpFile, "w") ;
@@ -101,6 +107,7 @@ module mkpipelined#(CoreID coreID)(RVIfc);
 
     Reg#(Bit#(32)) cycle <- mkReg(0);
     rule incr;
+                $display(cycle);
         cycle <= cycle + 1;
     endrule
 
@@ -115,12 +122,6 @@ module mkpipelined#(CoreID coreID)(RVIfc);
             let iid <- fetch1Konata(lfh, fresh_id, 0);
             labelKonataLeft(lfh, iid, $format("PC %x", pc[1]));
             // TODO implement fetch
-            
-
-
-
-
-            
             // current_id <= iid;
             let req = Mem {
                 byte_en : 0,
@@ -129,21 +130,21 @@ module mkpipelined#(CoreID coreID)(RVIfc);
             };
 
             toImem.enq(req);
+            // imemCache.putFromProc(req);
+            CacheAddr ppc = useBP ? ap.nap(pc[1]) : pc[1] + 4;
 
             F2D fetchInfo = F2D {
                 pc: pc[1],
-                ppc: pc[1] + 4,
+                ppc: ppc,
                 epoch: epoch[1],
                 k_id: iid
             };
 
             f2d.enq( fetchInfo );
             
-            pc[1] <= pc[1] + 4;
+            pc[1] <= ppc;
         // end
         
-
-
         // This will likely end with something like:
         // f2d.enq(F2D{ ..... k_id: iid});
         // iid is the unique identifier used by konata, that we will pass around everywhere for each instruction
@@ -155,6 +156,7 @@ module mkpipelined#(CoreID coreID)(RVIfc);
         F2D fetchInfo = f2d.first();
 
         let resp = fromImem.first();
+        // let resp <- imemCache.getToProc();
         let instr = resp.data;
         let decodedInst = decodeInst(instr);
 
@@ -198,6 +200,7 @@ module mkpipelined#(CoreID coreID)(RVIfc);
             };
 
             fromImem.deq();
+            // imemCache.dequeProc();
             f2d.deq();
             d2e.enq( decodeInfo );
 
@@ -270,6 +273,7 @@ module mkpipelined#(CoreID coreID)(RVIfc);
                 end else begin 
                     labelKonataLeft(lfh,current_id, $format(" MEM ", fshow(req)));
                     toDmem.enq(req);
+                    // dmemCache.putFromProc(req);
                 end
             end
             else if (isControlInst(dInst)) begin
@@ -286,41 +290,12 @@ module mkpipelined#(CoreID coreID)(RVIfc);
             // $display("%x | %x | %x", pc, decodeInfo.ppc, nextPc);
 
             if (decodeInfo.ppc != nextPc) begin
-                // $display("%x", decodeInfo.pc);
-
-                // $display("Switching epoch | %x | %x | %x", decodeInfo.pc, decodeInfo.ppc, nextPc);
-
                 epoch[0] <= epoch[0] + 1;
                 pc[0] <= nextPc;
-
-                // e[0] <= True;
-                
-
-                // $display("%x", nextPc);
-                
             end
-            // else begin
-            //     e[0] <= False;
-            // end
-
-            
-
-            // else begin
-            //     pc <= pc + 4;
-            // end
-
-            // newPc[0] <= nextPc;
-
-
-
-            // pc <= nextPc;
-            // rvd <= data;
+            if (useBP) ap.update(decodeInfo.pc, nextPc, decodeInfo.ppc == nextPc);
 
             labelKonataLeft(lfh,current_id, $format(" ALU output: %x" , data));
-
-            // mem_business <= MemBusiness { isUnsigned : unpack(isUnsigned), size : size, offset : offset, mmio: mmio};
-            // state <= Writeback;
-
 
             let business = MemBusiness { isUnsigned : unpack(isUnsigned), size : size, offset : offset, mmio: mmio};
             E2W executeInfo = E2W {
@@ -334,7 +309,7 @@ module mkpipelined#(CoreID coreID)(RVIfc);
 
             e2w.enq( executeInfo );
 
-            // pc <= nextPc;
+
         end
         else begin
             squashed.enq(current_id);
@@ -392,9 +367,11 @@ module mkpipelined#(CoreID coreID)(RVIfc);
 		    if (mem_business.mmio) begin 
                 resp = fromMMIO.first();
 		        fromMMIO.deq();
-		    end else begin 
+		    end else begin
                 resp = fromDmem.first();
-		        fromDmem.deq();
+                fromDmem.deq();
+                // resp = dmemCache.getToProc();
+		        // dmemCache.dequeProc();
 		    end
             let mem_data = resp.data;
             mem_data = mem_data >> {mem_business.offset ,3'b0};
