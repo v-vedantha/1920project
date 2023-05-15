@@ -206,7 +206,10 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
   endrule
 
   rule final_resp_rule if (cacheState == FinalResp);
-    if (reqType == Ld || responseOnWrite) hitQ.enq(reqType == Ld ? finalRespData : 0);
+    if (reqType == Ld || responseOnWrite) begin
+      if (debug) $display("Wrote something for addr", fshow(cacheReq.addr));
+      hitQ.enq(reqType == Ld ? finalRespData : 0);
+    end
     cacheState <= Ready;
   endrule
 
@@ -257,7 +260,7 @@ module mkDCache#(CoreID id)(MessageGet fromMem, MessagePut toMem, RefDMem refDMe
     downgradeState <= DowngradeStart;
   endrule
 
-  method Action req(MemReq r);
+  method Action req(MemReq r) if (cacheState == Ready);
 
       AddrInfo ai = extractAddrInfo(r.addr);
       

@@ -55,8 +55,8 @@ module mkSingleCore(
         let req = ireq;
         if (debug) $display("Get IResp ", fshow(req), fshow(cacheData));
         // req.data = cacheData;
-        Mem resp = Mem{ addr: req.addr, data: cacheData };
-        rv_core.getIResp(resp);
+        req.data = cacheData;
+        rv_core.getIResp(req);
     endrule
 
     // Reads data memory requests from the processor
@@ -78,9 +78,9 @@ module mkSingleCore(
 
         let req = dreq;
         if (debug) $display("Get DResp ", fshow(req), fshow(cacheData));
-        Mem resp = Mem{ addr: req.addr, data: cacheData };
+        req.data = cacheData;
         // req.data = cacheData;
-        rv_core.getDResp(resp);
+        rv_core.getDResp(req);
     endrule
   
     // Reads MMIO memory requests from the processor

@@ -62,7 +62,7 @@ module mkMessageRouter(
         end
     endrule
 
-    rule addToC if (m2r.hasResp || m2r.hasReq);
+    rule addToC if (m2r.notEmpty);
         if (debug) $display("addToC");
         CacheMemMessage m = m2r.first();
         if (m2r.hasResp()) begin

@@ -24,7 +24,7 @@ module mktop_pipelined(Empty);
     Reg#(Mem) ireq <- mkRegU;
     Reg#(Mem) dreq <- mkRegU;
     FIFO#(Mem) mmioreq <- mkFIFO;
-    let debug = False;
+    let debug = True;
     Reg#(Bit#(32)) cycle_count <- mkReg(0);
 
     Cache iCache <- mkCache();
