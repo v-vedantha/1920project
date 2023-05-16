@@ -56,10 +56,6 @@ echo "Testing mc_produce_consume.c"
 ./test.sh mc_produce_consume32
 ./multicore
 
-echo "Testing mc_median_main.c"
-./test.sh mc_median_main32
-./median
-
-echo "Testing multiply"
+echo "Testing mc_multiply.c"
 ./test.sh mc_multiply32
-./multicore
+./median

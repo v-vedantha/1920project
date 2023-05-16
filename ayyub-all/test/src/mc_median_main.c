@@ -79,6 +79,7 @@ int main1( )
   main1_cycles = cycles;
   main1_insts = insts;
   main1_done = 1;
+  while(1);
 
   // Return success
   return 0;

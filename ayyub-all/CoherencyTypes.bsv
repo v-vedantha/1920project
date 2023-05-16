@@ -41,6 +41,19 @@ module mkRefDummyMem(RefMem);
 	interface iMem = iVec;
 	interface dMem = dVec;
 endmodule
+
+interface Counter;
+    method Action inc;
+endinterface
+module mkCounter(Counter);
+    Reg#(Bit#(32)) cnt <- mkReg(0);
+    method Action inc;
+        cnt <= cnt + 1;
+        if (cnt == 1) begin
+            $finish;
+        end
+    endmethod
+endmodule
 typedef enum { M, S, I } MSI deriving( Bits, Eq, FShow );
 
 typedef enum {

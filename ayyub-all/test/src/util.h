@@ -1049,17 +1049,16 @@ int modulo(int dividend, int divisor) {
 
 int divide(int dividend, int divisor) {
     // Determine the sign of the result
-
-    // Convert dividend and divisor to positive
-    unsigned int u_dividend = dividend < 0 ? -dividend : dividend;
-    unsigned int u_divisor = divisor < 0 ? -divisor : divisor;
+    dividend = (dividend < 0) ? -dividend : dividend;
+    divisor = (divisor < 0) ? -divisor : divisor;
 
     // Perform long division
-    unsigned int quotient = 0;
-    while (u_dividend >= u_divisor) {
-        u_dividend -= u_divisor;
+    int quotient = 0;
+    while (dividend >= divisor) {
+        dividend -= divisor;
         quotient++;
     }
+    return quotient;
 }
 void printInt(int data){
 	while (data != 0) {

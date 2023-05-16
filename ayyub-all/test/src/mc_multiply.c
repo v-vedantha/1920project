@@ -97,11 +97,14 @@ int main1( )
   main1_done = 1;
 
   // always return success, main0 will keep track of accuracy
+  while(1);
   return 0;
 }
 
 int main(int argc, char *argv[] )
 {
+	printInt(1000);
+	printInt(-100);
 	int coreid = getCoreId();
     if( coreid == 0 ) {
         return main0();

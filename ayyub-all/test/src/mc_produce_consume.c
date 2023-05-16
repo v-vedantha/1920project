@@ -51,6 +51,7 @@ int core1()
 
 	// set done bit
 	main1_done = 1;
+	while(1);
 
     return 0;
 }

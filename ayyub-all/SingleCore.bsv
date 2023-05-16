@@ -4,6 +4,7 @@ import pipelined::*;
 import FIFO::*;
 import MemTypes::*;
 import DCache::*;
+import CoherencyTypes::*;
 
 function Bit#(1) toWrite(Bit#(4) byte_en);
     return byte_en == 0 ? 0 : 1;
@@ -17,6 +18,7 @@ module mkSingleCore(
     DCache iCache,
     DCache dCache,
     RVIfc rv_core,
+    Counter counter,
     Empty ifc
 );
     // Instantiate the dual ported memory
